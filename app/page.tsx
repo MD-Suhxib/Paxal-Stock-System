@@ -15,6 +15,11 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { addStockToFirestore, deleteStockFromFirestore, updateStockInFirestore } from "@/lib/firestore"
+import { getDocs, collection } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+
+
 
 interface StockItem {
   id: string
@@ -85,29 +90,22 @@ export default function PaxalStockManagement() {
     }
   }
 
-  const loadFromStorage = (): StockItem[] => {
+useEffect(() => {
+  const initializeApp = async () => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        const parsedData = JSON.parse(stored)
-        console.log('Data loaded from localStorage:', parsedData)
-        if (parsedData?.items && Array.isArray(parsedData.items)) {
-          return parsedData.items
-        }
-      }
-      const sessionStored = sessionStorage.getItem(STORAGE_KEY)
-      if (sessionStored) {
-        const parsedData = JSON.parse(sessionStored)
-        console.log('Data loaded from sessionStorage:', parsedData)
-        if (parsedData?.items && Array.isArray(parsedData.items)) {
-          return parsedData.items
-        }
-      }
+      const snapshot = await getDocs(collection(db, "stocks"))
+      const items = snapshot.docs.map((doc) => doc.data() as StockItem)
+      setStockItems(items)
+      setIsLoading(false)
     } catch (error) {
-      console.error('Error loading from storage:', error)
+      console.error("Failed to fetch stock from Firestore:", error)
+      setIsLoading(false)
     }
-    return []
   }
+
+  initializeApp()
+}, [setStockItems])
+
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -186,54 +184,22 @@ Paxal Marbles & Granites - Confidential
     }
   }
 
-  useEffect(() => {
-    const initializeApp = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      const storedItems = loadFromStorage()
-      if (storedItems.length > 0) {
-        console.log("Loaded existing data:", storedItems)
-        setStockItems(storedItems)
-      } else {
-        console.log("No existing data found, initializing with sample data")
-        const sampleData: StockItem[] = [
-          {
-            id: "1",
-            name: "Carrara White Marble",
-            image: getDefaultImage(),
-            price: 7200,
-            dateAdded: "2024-01-15",
-            stockAvailable: 25,
-            stockSold: 5,
-            size: "3/4",
-          },
-          {
-            id: "2",
-            name: "Black Galaxy Granite",
-            image: getDefaultImage(),
-            price: 10100,
-            dateAdded: "2024-01-14",
-            stockAvailable: 18,
-            stockSold: 12,
-            size: "2/3",
-          },
-          {
-            id: "3",
-            name: "Emperador Brown Marble",
-            image: getDefaultImage(),
-            price: 8050,
-            dateAdded: "2024-01-13",
-            stockAvailable: 30,
-            stockSold: 8,
-            size: "3/4",
-          },
-        ]
-        setStockItems(sampleData)
-        saveToStorage(sampleData)
-      }
+useEffect(() => {
+  const initializeApp = async () => {
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1000)) // Optional delay
+      const snapshot = await getDocs(collection(db, "stocks"))
+      const items = snapshot.docs.map((doc) => doc.data() as StockItem)
+      setStockItems(items)
+    } catch (error) {
+      console.error("Error loading stocks from Firestore:", error)
+    } finally {
       setIsLoading(false)
     }
-    initializeApp()
-  }, [])
+  }
+
+  initializeApp()
+}, [setStockItems])
 
   useEffect(() => {
     if (!isLoading) {
@@ -246,24 +212,25 @@ Paxal Marbles & Granites - Confidential
     item.name.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
-  const handleAddStock = () => {
-    if (newStock.name && newStock.price && newStock.stockAvailable && newStock.size) {
-      const newItem: StockItem = {
-        id: Date.now().toString(),
-        name: newStock.name,
-        image: newStock.image || getDefaultImage(),
-        price: Number.parseFloat(newStock.price),
-        dateAdded: new Date().toISOString().split("T")[0],
-        stockAvailable: Number.parseInt(newStock.stockAvailable),
-        stockSold: 0,
-        size: newStock.size,
-      }
-      const updatedItems = [newItem, ...stockItems]
-      setStockItems(updatedItems)
-      setNewStock({ name: "", image: "", price: "", stockAvailable: "", size: "" })
-      setIsAddModalOpen(false)
+  const handleAddStock = async () => {
+  if (newStock.name && newStock.price && newStock.stockAvailable && newStock.size) {
+    const newItem: StockItem = {
+      id: Date.now().toString(),
+      name: newStock.name,
+      image: newStock.image || getDefaultImage(),
+      price: Number.parseFloat(newStock.price),
+      dateAdded: new Date().toISOString().split("T")[0],
+      stockAvailable: Number.parseInt(newStock.stockAvailable),
+      stockSold: 0,
+      size: newStock.size,
     }
+    const updatedItems = [newItem, ...stockItems]
+    setStockItems(updatedItems)
+    await addStockToFirestore(newItem) // ⬅️ Firestore call
+    setNewStock({ name: "", image: "", price: "", stockAvailable: "", size: "" })
+    setIsAddModalOpen(false)
   }
+}
 
   const handleOpenEditModal = (item: StockItem) => {
     setEditStock({
@@ -278,77 +245,105 @@ Paxal Marbles & Granites - Confidential
     setDetailViewItem(null)
   }
 
-  const handleUpdateStock = () => {
-    if (editStock.name && editStock.price && editStock.stockAvailable && editStock.size) {
+  const handleUpdateStock = async () => {
+  if (editStock.name && editStock.price && editStock.stockAvailable && editStock.size) {
+    const updatedItems = stockItems.map((item) =>
+      item.id === editStock.id
+        ? {
+            ...item,
+            name: editStock.name,
+            image: editStock.image || getDefaultImage(),
+            price: Number.parseFloat(editStock.price),
+            stockAvailable: Number.parseInt(editStock.stockAvailable),
+            size: editStock.size,
+          }
+        : item
+    )
+    setStockItems(updatedItems)
+    const updatedItem = updatedItems.find(item => item.id === editStock.id)
+    if (updatedItem) {
+      await updateStockInFirestore(updatedItem) // ⬅️ Firestore call
+    }
+    setEditStock({ id: "", name: "", image: "", price: "", stockAvailable: "", size: "" })
+    setIsEditModalOpen(false)
+  }
+}
+
+  const handleDeleteStock = async (id: string) => {
+  const updatedItems = stockItems.filter((item) => item.id !== id)
+  setStockItems(updatedItems)
+  await deleteStockFromFirestore(id) // ⬅️ Firestore call
+  setDeleteConfirmation({ isOpen: false, itemId: "", itemName: "" })
+}
+
+
+ const handleSellStock = async () => {
+  if (detailViewItem && sellQuantity) {
+    const quantity = Number.parseInt(sellQuantity)
+    if (quantity > 0 && quantity <= detailViewItem.stockAvailable) {
+      const updatedAvailable = detailViewItem.stockAvailable - quantity
+      const updatedSold = detailViewItem.stockSold + quantity
+
+      // 🔁 Update local UI
       const updatedItems = stockItems.map((item) =>
-        item.id === editStock.id
+        item.id === detailViewItem.id
           ? {
               ...item,
-              name: editStock.name,
-              image: editStock.image || getDefaultImage(),
-              price: Number.parseFloat(editStock.price),
-              stockAvailable: Number.parseInt(editStock.stockAvailable),
-              size: editStock.size,
+              stockAvailable: updatedAvailable,
+              stockSold: updatedSold,
             }
           : item,
       )
       setStockItems(updatedItems)
-      setEditStock({ id: "", name: "", image: "", price: "", stockAvailable: "", size: "" })
-      setIsEditModalOpen(false)
+      setSellQuantity("")
+      setDetailViewItem({
+        ...detailViewItem,
+        stockAvailable: updatedAvailable,
+        stockSold: updatedSold,
+      })
+
+      // 🔁 Update Firestore
+      await updateStockInFirestore(detailViewItem.id, {
+        stockAvailable: updatedAvailable,
+        stockSold: updatedSold,
+      })
     }
   }
+}
 
-  const handleDeleteStock = (id: string) => {
-    const updatedItems = stockItems.filter((item) => item.id !== id)
-    setStockItems(updatedItems)
-    setDeleteConfirmation({ isOpen: false, itemId: "", itemName: "" })
-  }
+  const handleAddStockToExisting = async () => {
+  if (detailViewItem && addQuantity) {
+    const quantity = Number.parseInt(addQuantity)
+    if (quantity > 0) {
+      const updatedAvailable = detailViewItem.stockAvailable + quantity
 
-  const handleSellStock = () => {
-    if (detailViewItem && sellQuantity) {
-      const quantity = Number.parseInt(sellQuantity)
-      if (quantity > 0 && quantity <= detailViewItem.stockAvailable) {
-        const updatedItems = stockItems.map((item) =>
-          item.id === detailViewItem.id
-            ? {
-                ...item,
-                stockAvailable: item.stockAvailable - quantity,
-                stockSold: item.stockSold + quantity,
-              }
-            : item,
-        )
-        setStockItems(updatedItems)
-        setSellQuantity("")
-        setDetailViewItem({
-          ...detailViewItem,
-          stockAvailable: detailViewItem.stockAvailable - quantity,
-          stockSold: detailViewItem.stockSold + quantity,
+      // 🔁 Update local state
+      const updatedItems = stockItems.map((item) =>
+        item.id === detailViewItem.id
+          ? {
+              ...item,
+              stockAvailable: updatedAvailable,
+            }
+          : item,
+      )
+      setStockItems(updatedItems)
+      setAddQuantity("")
+      setDetailViewItem({
+        ...detailViewItem,
+        stockAvailable: updatedAvailable,
+      })
+
+      // ✅ Update Firestore
+      try {
+        await updateStockInFirestore(detailViewItem.id, {
+          stockAvailable: updatedAvailable,
         })
+      } catch (error) {
+        console.error("Failed to update stock in Firestore:", error)
       }
     }
   }
-
-  const handleAddStockToExisting = () => {
-    if (detailViewItem && addQuantity) {
-      const quantity = Number.parseInt(addQuantity)
-      if (quantity > 0) {
-        const updatedItems = stockItems.map((item) =>
-          item.id === detailViewItem.id
-            ? {
-                ...item,
-                stockAvailable: item.stockAvailable + quantity,
-              }
-            : item,
-        )
-        setStockItems(updatedItems)
-        setAddQuantity("")
-        setDetailViewItem({
-          ...detailViewItem,
-          stockAvailable: detailViewItem.stockAvailable + quantity,
-        })
-      }
-    }
-  }
+}
 
   if (isLoading) {
     return (

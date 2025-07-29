@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, Plus, Trash2, Upload, Edit, Download } from "lucide-react"
+import { Search, Plus, Trash2, Upload, Edit, Download, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,8 +19,6 @@ import { addStockToFirestore, deleteStockFromFirestore, updateStockInFirestore }
 import { getDocs, collection } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
-
-
 interface StockItem {
   id: string
   name: string
@@ -30,13 +28,24 @@ interface StockItem {
   stockAvailable: number
   stockSold: number
   size: string
+  warehouse: number
 }
 
-const STORAGE_KEY = "paxal-stock-data"
+interface WarehouseData {
+  [key: string]: StockItem[]
+}
 
-export default function PaxalStockManagement() {
+const STORAGE_KEY = "paxal-multi-warehouse-data"
+
+export default function PaxalMultiWarehouseSystem() {
+  const [currentWarehouse, setCurrentWarehouse] = useState<number>(1)
   const [isLoading, setIsLoading] = useState(true)
-  const [stockItems, setStockItems] = useState<StockItem[]>([])
+  const [warehouseData, setWarehouseData] = useState<WarehouseData>({
+    '1': [],
+    '2': [],
+    '3': [],
+    '4': []
+  })
   const [searchQuery, setSearchQuery] = useState("")
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -71,9 +80,9 @@ export default function PaxalStockManagement() {
 
   const getDefaultImage = () => "/placeholder.svg?height=300&width=400&text=No+Image"
 
-  const saveToStorage = (items: StockItem[]) => {
+  const saveToStorage = (data: WarehouseData) => {
     const storageData = {
-      items,
+      warehouses: data,
       lastUpdated: new Date().toISOString(),
     }
     try {
@@ -90,22 +99,83 @@ export default function PaxalStockManagement() {
     }
   }
 
-useEffect(() => {
-  const initializeApp = async () => {
+  const loadFromStorage = (): WarehouseData => {
     try {
-      const snapshot = await getDocs(collection(db, "stocks"))
-      const items = snapshot.docs.map((doc) => doc.data() as StockItem)
-      setStockItems(items)
-      setIsLoading(false)
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        console.log('Data loaded from localStorage:', parsed)
+        return parsed.warehouses || { '1': [], '2': [], '3': [], '4': [] }
+      }
     } catch (error) {
-      console.error("Failed to fetch stock from Firestore:", error)
-      setIsLoading(false)
+      console.error('Error loading from localStorage:', error)
+      try {
+        const stored = sessionStorage.getItem(STORAGE_KEY)
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          console.log('Data loaded from sessionStorage:', parsed)
+          return parsed.warehouses || { '1': [], '2': [], '3': [], '4': [] }
+        }
+      } catch (sessionError) {
+        console.error('Error loading from sessionStorage:', sessionError)
+      }
     }
+    return { '1': [], '2': [], '3': [], '4': [] }
   }
 
-  initializeApp()
-}, [setStockItems])
+  // Load data from Firestore for all warehouses
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        const warehouseCollections = ['1', '2', '3', '4']
+        const allWarehouseData: WarehouseData = { '1': [], '2': [], '3': [], '4': [] }
 
+        // Load data for each warehouse
+        for (const warehouseNum of warehouseCollections) {
+          try {
+            const snapshot = await getDocs(collection(db, `warehouse${warehouseNum}-stocks`))
+            const items = snapshot.docs.map((doc) => ({
+              ...doc.data() as Omit<StockItem, 'warehouse'>,
+              warehouse: parseInt(warehouseNum)
+            }))
+            allWarehouseData[warehouseNum] = items
+          } catch (error) {
+            console.error(`Failed to fetch stock from Warehouse ${warehouseNum}:`, error)
+            allWarehouseData[warehouseNum] = []
+          }
+        }
+
+        setWarehouseData(allWarehouseData)
+        setIsLoading(false)
+      } catch (error) {
+        console.error("Failed to initialize warehouses:", error)
+        // Fallback to local storage if Firestore fails
+        const localData = loadFromStorage()
+        setWarehouseData(localData)
+        setIsLoading(false)
+      }
+    }
+
+    initializeApp()
+  }, [])
+
+  useEffect(() => {
+    if (!isLoading) {
+      console.log("Saving updated warehouse data:", warehouseData)
+      saveToStorage(warehouseData)
+    }
+  }, [warehouseData, isLoading])
+
+  const getCurrentStockItems = (): StockItem[] => {
+    return warehouseData[currentWarehouse.toString()] || []
+  }
+
+  const updateCurrentWarehouseData = (newItems: StockItem[]) => {
+    setWarehouseData(prev => ({
+      ...prev,
+      [currentWarehouse.toString()]: newItems
+    }))
+  }
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -133,24 +203,25 @@ useEffect(() => {
 
   const exportToPDF = async () => {
     setIsExportingPDF(true)
+    const currentItems = getCurrentStockItems()
     try {
       const pdfContent = `
 PAXAL MARBLES & GRANITES
-Stock Management Report
+Warehouse ${currentWarehouse} - Stock Management Report
 Generated on: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
 
 SUMMARY STATISTICS
 =================
-Total Items: ${stockItems.length}
-Total Stock Available: ${stockItems.reduce((sum, item) => sum + item.stockAvailable, 0)} SQFT
-Total Stock Sold: ${stockItems.reduce((sum, item) => sum + item.stockSold, 0)} SQFT
-Total Inventory Value: ₹${stockItems
+Total Items: ${currentItems.length}
+Total Stock Available: ${currentItems.reduce((sum, item) => sum + item.stockAvailable, 0)} SQFT
+Total Stock Sold: ${currentItems.reduce((sum, item) => sum + item.stockSold, 0)} SQFT
+Total Inventory Value: ₹${currentItems
         .reduce((sum, item) => sum + item.price * item.stockAvailable, 0)
         .toLocaleString("en-IN")}
 
 STOCK DETAILS
 =============
-${stockItems
+${currentItems
         .map(
           (item, index) => `
 ${index + 1}. ${item.name}
@@ -165,13 +236,13 @@ ${index + 1}. ${item.name}
         .join("")}
 
 ---
-Paxal Marbles & Granites - Confidential
+Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
       `
       const blob = new Blob([pdfContent], { type: "text/plain" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `Paxal_Stock_Report_${new Date().toISOString().split("T")[0]}.txt`
+      a.download = `Paxal_Warehouse${currentWarehouse}_Stock_Report_${new Date().toISOString().split("T")[0]}.txt`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -184,53 +255,50 @@ Paxal Marbles & Granites - Confidential
     }
   }
 
-useEffect(() => {
-  const initializeApp = async () => {
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000)) // Optional delay
-      const snapshot = await getDocs(collection(db, "stocks"))
-      const items = snapshot.docs.map((doc) => doc.data() as StockItem)
-      setStockItems(items)
-    } catch (error) {
-      console.error("Error loading stocks from Firestore:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  initializeApp()
-}, [setStockItems])
-
-  useEffect(() => {
-    if (!isLoading) {
-      console.log("Saving updated stock items:", stockItems)
-      saveToStorage(stockItems)
-    }
-  }, [stockItems, isLoading])
-
-  const filteredItems = stockItems.filter((item) =>
+  const currentItems = getCurrentStockItems()
+  const filteredItems = currentItems.filter((item) =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
-  const handleAddStock = async () => {
-  if (newStock.name && newStock.price && newStock.stockAvailable && newStock.size) {
-    const newItem: StockItem = {
-      id: Date.now().toString(),
-      name: newStock.name,
-      image: newStock.image || getDefaultImage(),
-      price: Number.parseFloat(newStock.price),
-      dateAdded: new Date().toISOString().split("T")[0],
-      stockAvailable: Number.parseInt(newStock.stockAvailable),
-      stockSold: 0,
-      size: newStock.size,
-    }
-    const updatedItems = [newItem, ...stockItems]
-    setStockItems(updatedItems)
-    await addStockToFirestore(newItem) // ⬅️ Firestore call
-    setNewStock({ name: "", image: "", price: "", stockAvailable: "", size: "" })
+  const handleWarehouseChange = (warehouseNumber: number) => {
+    setCurrentWarehouse(warehouseNumber)
+    setSearchQuery("")
+    setDetailViewItem(null)
     setIsAddModalOpen(false)
+    setIsEditModalOpen(false)
+    setDeleteConfirmation({ isOpen: false, itemId: "", itemName: "" })
   }
-}
+
+  const handleAddStock = async () => {
+    if (newStock.name && newStock.price && newStock.stockAvailable && newStock.size) {
+      const newItem: StockItem = {
+        id: `${currentWarehouse}-${Date.now()}`,
+        name: newStock.name,
+        image: newStock.image || getDefaultImage(),
+        price: Number.parseFloat(newStock.price),
+        dateAdded: new Date().toISOString().split("T")[0],
+        stockAvailable: Number.parseInt(newStock.stockAvailable),
+        stockSold: 0,
+        size: newStock.size,
+        warehouse: currentWarehouse,
+      }
+      
+      try {
+        // Add to Firestore with warehouse-specific collection
+        await addStockToFirestore(newItem, `warehouse${currentWarehouse}-stocks`)
+        
+        // Update local state
+        const updatedItems = [newItem, ...currentItems]
+        updateCurrentWarehouseData(updatedItems)
+        
+        setNewStock({ name: "", image: "", price: "", stockAvailable: "", size: "" })
+        setIsAddModalOpen(false)
+      } catch (error) {
+        console.error("Failed to add stock to Firestore:", error)
+        alert("Failed to add stock. Please try again.")
+      }
+    }
+  }
 
   const handleOpenEditModal = (item: StockItem) => {
     setEditStock({
@@ -246,104 +314,115 @@ useEffect(() => {
   }
 
   const handleUpdateStock = async () => {
-  if (editStock.name && editStock.price && editStock.stockAvailable && editStock.size) {
-    const updatedItems = stockItems.map((item) =>
-      item.id === editStock.id
-        ? {
-            ...item,
-            name: editStock.name,
-            image: editStock.image || getDefaultImage(),
-            price: Number.parseFloat(editStock.price),
-            stockAvailable: Number.parseInt(editStock.stockAvailable),
-            size: editStock.size,
-          }
-        : item
-    )
-    setStockItems(updatedItems)
-    const updatedItem = updatedItems.find(item => item.id === editStock.id)
-    if (updatedItem) {
-      await updateStockInFirestore(updatedItem) // ⬅️ Firestore call
-    }
-    setEditStock({ id: "", name: "", image: "", price: "", stockAvailable: "", size: "" })
-    setIsEditModalOpen(false)
-  }
-}
+    if (editStock.name && editStock.price && editStock.stockAvailable && editStock.size) {
+      const updatedItem: StockItem = {
+        id: editStock.id,
+        name: editStock.name,
+        image: editStock.image || getDefaultImage(),
+        price: Number.parseFloat(editStock.price),
+        stockAvailable: Number.parseInt(editStock.stockAvailable),
+        size: editStock.size,
+        dateAdded: currentItems.find(item => item.id === editStock.id)?.dateAdded || new Date().toISOString().split("T")[0],
+        stockSold: currentItems.find(item => item.id === editStock.id)?.stockSold || 0,
+        warehouse: currentWarehouse,
+      }
 
-  const handleDeleteStock = async (id: string) => {
-  const updatedItems = stockItems.filter((item) => item.id !== id)
-  setStockItems(updatedItems)
-  await deleteStockFromFirestore(id) // ⬅️ Firestore call
-  setDeleteConfirmation({ isOpen: false, itemId: "", itemName: "" })
-}
-
-
- const handleSellStock = async () => {
-  if (detailViewItem && sellQuantity) {
-    const quantity = Number.parseInt(sellQuantity)
-    if (quantity > 0 && quantity <= detailViewItem.stockAvailable) {
-      const updatedAvailable = detailViewItem.stockAvailable - quantity
-      const updatedSold = detailViewItem.stockSold + quantity
-
-      // 🔁 Update local UI
-      const updatedItems = stockItems.map((item) =>
-        item.id === detailViewItem.id
-          ? {
-              ...item,
-              stockAvailable: updatedAvailable,
-              stockSold: updatedSold,
-            }
-          : item,
-      )
-      setStockItems(updatedItems)
-      setSellQuantity("")
-      setDetailViewItem({
-        ...detailViewItem,
-        stockAvailable: updatedAvailable,
-        stockSold: updatedSold,
-      })
-
-      // 🔁 Update Firestore
-      await updateStockInFirestore(detailViewItem.id, {
-        stockAvailable: updatedAvailable,
-        stockSold: updatedSold,
-      })
-    }
-  }
-}
-
-  const handleAddStockToExisting = async () => {
-  if (detailViewItem && addQuantity) {
-    const quantity = Number.parseInt(addQuantity)
-    if (quantity > 0) {
-      const updatedAvailable = detailViewItem.stockAvailable + quantity
-
-      // 🔁 Update local state
-      const updatedItems = stockItems.map((item) =>
-        item.id === detailViewItem.id
-          ? {
-              ...item,
-              stockAvailable: updatedAvailable,
-            }
-          : item,
-      )
-      setStockItems(updatedItems)
-      setAddQuantity("")
-      setDetailViewItem({
-        ...detailViewItem,
-        stockAvailable: updatedAvailable,
-      })
-
-      // ✅ Update Firestore
       try {
-        await updateStockInFirestore(detailViewItem.id, {
-          stockAvailable: updatedAvailable,
-        })
+        // Update in Firestore with warehouse-specific collection
+        await updateStockInFirestore(updatedItem, `warehouse${currentWarehouse}-stocks`)
+        
+        // Update local state
+        const updatedItems = currentItems.map((item) =>
+          item.id === editStock.id ? updatedItem : item
+        )
+        updateCurrentWarehouseData(updatedItems)
+        
+        setEditStock({ id: "", name: "", image: "", price: "", stockAvailable: "", size: "" })
+        setIsEditModalOpen(false)
       } catch (error) {
         console.error("Failed to update stock in Firestore:", error)
+        alert("Failed to update stock. Please try again.")
       }
     }
   }
-}
+
+  const handleDeleteStock = async (id: string) => {
+    try {
+      // Delete from Firestore with warehouse-specific collection
+      await deleteStockFromFirestore(id, `warehouse${currentWarehouse}-stocks`)
+      
+      // Update local state
+      const updatedItems = currentItems.filter((item) => item.id !== id)
+      updateCurrentWarehouseData(updatedItems)
+      
+      setDeleteConfirmation({ isOpen: false, itemId: "", itemName: "" })
+    } catch (error) {
+      console.error("Failed to delete stock from Firestore:", error)
+      alert("Failed to delete stock. Please try again.")
+    }
+  }
+
+  const handleSellStock = async () => {
+    if (detailViewItem && sellQuantity) {
+      const quantity = Number.parseInt(sellQuantity)
+      if (quantity > 0 && quantity <= detailViewItem.stockAvailable) {
+        const updatedAvailable = detailViewItem.stockAvailable - quantity
+        const updatedSold = detailViewItem.stockSold + quantity
+
+        const updatedItem: StockItem = {
+          ...detailViewItem,
+          stockAvailable: updatedAvailable,
+          stockSold: updatedSold,
+        }
+
+        try {
+          // Update in Firestore with warehouse-specific collection
+          await updateStockInFirestore(updatedItem, `warehouse${currentWarehouse}-stocks`)
+          
+          // Update local state
+          const updatedItems = currentItems.map((item) =>
+            item.id === detailViewItem.id ? updatedItem : item,
+          )
+          updateCurrentWarehouseData(updatedItems)
+          setSellQuantity("")
+          setDetailViewItem(updatedItem)
+        } catch (error) {
+          console.error("Failed to update stock in Firestore:", error)
+          alert("Failed to sell stock. Please try again.")
+        }
+      }
+    }
+  }
+
+  const handleAddStockToExisting = async () => {
+    if (detailViewItem && addQuantity) {
+      const quantity = Number.parseInt(addQuantity)
+      if (quantity > 0) {
+        const updatedAvailable = detailViewItem.stockAvailable + quantity
+
+        const updatedItem: StockItem = {
+          ...detailViewItem,
+          stockAvailable: updatedAvailable,
+        }
+
+        try {
+          // Update in Firestore with warehouse-specific collection
+          await updateStockInFirestore(updatedItem, `warehouse${currentWarehouse}-stocks`)
+          
+          // Update local state
+          const updatedItems = currentItems.map((item) =>
+            item.id === detailViewItem.id ? updatedItem : item,
+          )
+          updateCurrentWarehouseData(updatedItems)
+          setAddQuantity("")
+          setDetailViewItem(updatedItem)
+        } catch (error) {
+          console.error("Failed to update stock in Firestore:", error)
+          alert("Failed to add stock. Please try again.")
+        }
+      }
+    }
+  }
 
   if (isLoading) {
     return (
@@ -355,7 +434,7 @@ useEffect(() => {
           </div>
           <div className="space-y-2">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Paxal Marbles & Granites</h2>
-            <p className="text-sm sm:text-base text-slate-600">Loading your showroom...</p>
+            <p className="text-sm sm:text-base text-slate-600">Loading your warehouses...</p>
             <div className="flex justify-center space-x-1 mt-4">
               <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
               <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
@@ -371,30 +450,65 @@ useEffect(() => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-            <div className="text-center sm:text-left">
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Paxal Marbles & Granites</h1>
-              <p className="text-sm sm:text-base text-slate-600 mt-1">Showroom Stock Management</p>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+              <div className="text-center sm:text-left">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Paxal Marbles & Granites</h1>
+                <p className="text-sm sm:text-base text-slate-600 mt-1">Multi-Warehouse Stock Management</p>
+              </div>
+              <div className="flex items-center justify-center sm:justify-end gap-2">
+                <Badge variant="secondary" className="text-xs sm:text-sm">
+                  {currentItems.length} Items in Warehouse {currentWarehouse}
+                </Badge>
+                <Badge variant="outline" className="text-xs sm:text-sm bg-green-50 text-green-700">
+                  Data Synced ✓
+                </Badge>
+              </div>
             </div>
-            <div className="flex items-center justify-center sm:justify-end gap-2">
-              <Badge variant="secondary" className="text-xs sm:text-sm">
-                {stockItems.length} Items in Stock
-              </Badge>
-              <Badge variant="outline" className="text-xs sm:text-sm bg-green-50 text-green-700">
-                Data Saved ✓
-              </Badge>
+            
+            {/* Warehouse Selection Buttons */}
+            <div className="flex flex-wrap gap-2 justify-center sm:justify-end">
+              {[1, 2, 3, 4].map((warehouseNum) => (
+                <Button
+                  key={warehouseNum}
+                  onClick={() => handleWarehouseChange(warehouseNum)}
+                  variant={currentWarehouse === warehouseNum ? "default" : "outline"}
+                  size="sm"
+                  className={`h-8 px-3 text-xs sm:text-sm ${
+                    currentWarehouse === warehouseNum 
+                      ? "bg-slate-800 hover:bg-slate-700" 
+                      : "hover:bg-slate-100"
+                  }`}
+                >
+                  <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  Warehouse {warehouseNum}
+                  <Badge 
+                    variant="secondary" 
+                    className="ml-2 text-xs bg-slate-100 text-slate-700"
+                  >
+                    {warehouseData[warehouseNum.toString()]?.length || 0}
+                  </Badge>
+                </Button>
+              ))}
             </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
+        <div className="mb-4 p-4 bg-white rounded-lg border border-slate-200">
+          <div className="flex items-center justify-center gap-2 text-slate-700">
+            <Building2 className="h-5 w-5" />
+            <span className="text-lg font-semibold">Currently Managing: Warehouse {currentWarehouse}</span>
+          </div>
+        </div>
+
         <div className="flex flex-col gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
             <Input
               type="text"
-              placeholder="Search stock items by name..."
+              placeholder={`Search stock items in Warehouse ${currentWarehouse}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 h-10 sm:h-12 text-sm sm:text-lg"
@@ -403,7 +517,7 @@ useEffect(() => {
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <Button
               onClick={exportToPDF}
-              disabled={isExportingPDF || stockItems.length === 0}
+              disabled={isExportingPDF || currentItems.length === 0}
               className="h-10 sm:h-12 px-4 sm:px-6 bg-green-600 hover:bg-green-700 text-sm sm:text-base flex-1 sm:flex-none"
             >
               {isExportingPDF ? (
@@ -414,7 +528,7 @@ useEffect(() => {
               ) : (
                 <>
                   <Download className="h-4 w-4 mr-2" />
-                  Export to PDF
+                  Export Warehouse {currentWarehouse} to PDF
                 </>
               )}
             </Button>
@@ -423,7 +537,7 @@ useEffect(() => {
               className="h-10 sm:h-12 px-4 sm:px-6 bg-slate-800 hover:bg-slate-700 text-sm sm:text-base flex-1 sm:flex-none"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add New Stock
+              Add New Stock to Warehouse {currentWarehouse}
             </Button>
           </div>
         </div>
@@ -434,12 +548,12 @@ useEffect(() => {
               <Search className="h-8 w-8 sm:h-12 sm:w-12 mx-auto" />
             </div>
             <h3 className="text-base sm:text-lg font-medium text-slate-900 mb-2">
-              {searchQuery ? "No items found" : "No stock items yet"}
+              {searchQuery ? "No items found" : `No stock items in Warehouse ${currentWarehouse} yet`}
             </h3>
             <p className="text-sm sm:text-base text-slate-600 max-w-md mx-auto">
               {searchQuery
-                ? `No items match "${searchQuery}". Try a different search term.`
-                : "Add your first stock item to get started."}
+                ? `No items match "${searchQuery}" in Warehouse ${currentWarehouse}. Try a different search term.`
+                : `Add your first stock item to Warehouse ${currentWarehouse} to get started.`}
             </p>
           </div>
         ) : (
@@ -507,9 +621,9 @@ useEffect(() => {
         <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
           <DialogContent className="sm:max-w-md max-w-[95vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl">Add New Stock Item</DialogTitle>
+              <DialogTitle className="text-lg sm:text-xl">Add New Stock Item to Warehouse {currentWarehouse}</DialogTitle>
               <DialogDescription className="text-sm sm:text-base">
-                Add a new marble or granite item to your showroom inventory.
+                Add a new marble or granite item to Warehouse {currentWarehouse} inventory.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -615,7 +729,7 @@ useEffect(() => {
                 disabled={!newStock.name || !newStock.price || !newStock.stockAvailable || !newStock.size}
                 className="bg-slate-800 hover:bg-slate-700 text-sm sm:text-base"
               >
-                Add Stock Item
+                Add to Warehouse {currentWarehouse}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -624,9 +738,9 @@ useEffect(() => {
         <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
           <DialogContent className="sm:max-w-md max-w-[95vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl">Edit Stock Item</DialogTitle>
+              <DialogTitle className="text-lg sm:text-xl">Edit Stock Item in Warehouse {currentWarehouse}</DialogTitle>
               <DialogDescription className="text-sm sm:text-base">
-                Update the details of this marble or granite item.
+                Update the details of this marble or granite item in Warehouse {currentWarehouse}.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -746,7 +860,7 @@ useEffect(() => {
             <DialogHeader>
               <DialogTitle className="text-lg sm:text-xl">Confirm Delete</DialogTitle>
               <DialogDescription className="text-sm sm:text-base">
-                Are you sure you want to delete {deleteConfirmation.itemName}? This action cannot be undone.
+                Are you sure you want to delete {deleteConfirmation.itemName} from Warehouse {currentWarehouse}? This action cannot be undone.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-2 flex-col sm:flex-row">
@@ -773,7 +887,7 @@ useEffect(() => {
             <DialogHeader>
               <DialogTitle className="text-lg sm:text-xl">{detailViewItem?.name}</DialogTitle>
               <DialogDescription className="text-sm sm:text-base">
-                Manage stock details for this item
+                Manage stock details for this item in Warehouse {currentWarehouse}
               </DialogDescription>
             </DialogHeader>
             {detailViewItem && (

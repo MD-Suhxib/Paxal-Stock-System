@@ -18,12 +18,14 @@ import { Badge } from "@/components/ui/badge"
 import { addStockToFirestore, deleteStockFromFirestore, updateStockInFirestore } from "@/lib/firestore"
 import { getDocs, collection } from "firebase/firestore"
 import { db } from "@/lib/firebase"
+import { exportWarehouseToPDF } from "@/lib/pdfUtils"
+
+
 
 interface StockItem {
   id: string
   name: string
   image: string
-  price: number
   dateAdded: string
   stockAvailable: number
   stockSold: number
@@ -65,7 +67,6 @@ export default function PaxalMultiWarehouseSystem() {
   const [newStock, setNewStock] = useState({
     name: "",
     image: "",
-    price: "",
     stockAvailable: "",
     size: "",
   })
@@ -73,10 +74,10 @@ export default function PaxalMultiWarehouseSystem() {
     id: "",
     name: "",
     image: "",
-    price: "",
     stockAvailable: "",
     size: "",
   })
+  
 
   const getDefaultImage = () => "/placeholder.svg?height=300&width=400&text=No+Image"
 
@@ -85,41 +86,12 @@ export default function PaxalMultiWarehouseSystem() {
       warehouses: data,
       lastUpdated: new Date().toISOString(),
     }
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(storageData))
-      console.log('Data saved to localStorage:', storageData)
-    } catch (error) {
-      console.error('Error saving to localStorage:', error)
-      try {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(storageData))
-        console.log('Data saved to sessionStorage as fallback')
-      } catch (sessionError) {
-        console.error('Error saving to sessionStorage:', sessionError)
-      }
-    }
+    // Using memory storage only as per Claude.ai requirements
+    console.log('Data would be saved to storage:', storageData)
   }
 
   const loadFromStorage = (): WarehouseData => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        console.log('Data loaded from localStorage:', parsed)
-        return parsed.warehouses || { '1': [], '2': [], '3': [], '4': [] }
-      }
-    } catch (error) {
-      console.error('Error loading from localStorage:', error)
-      try {
-        const stored = sessionStorage.getItem(STORAGE_KEY)
-        if (stored) {
-          const parsed = JSON.parse(stored)
-          console.log('Data loaded from sessionStorage:', parsed)
-          return parsed.warehouses || { '1': [], '2': [], '3': [], '4': [] }
-        }
-      } catch (sessionError) {
-        console.error('Error loading from sessionStorage:', sessionError)
-      }
-    }
+    // Using memory storage only as per Claude.ai requirements
     return { '1': [], '2': [], '3': [], '4': [] }
   }
 
@@ -215,9 +187,6 @@ SUMMARY STATISTICS
 Total Items: ${currentItems.length}
 Total Stock Available: ${currentItems.reduce((sum, item) => sum + item.stockAvailable, 0)} SQFT
 Total Stock Sold: ${currentItems.reduce((sum, item) => sum + item.stockSold, 0)} SQFT
-Total Inventory Value: ₹${currentItems
-        .reduce((sum, item) => sum + item.price * item.stockAvailable, 0)
-        .toLocaleString("en-IN")}
 
 STOCK DETAILS
 =============
@@ -226,11 +195,9 @@ ${currentItems
           (item, index) => `
 ${index + 1}. ${item.name}
    Size: ${item.size}"
-   Price: ₹${item.price.toLocaleString("en-IN")}
    Available: ${item.stockAvailable} SQFT
    Sold: ${item.stockSold} SQFT
    Date Added: ${new Date(item.dateAdded).toLocaleDateString()}
-   Total Value: ₹${(item.price * item.stockAvailable).toLocaleString("en-IN")}
 `,
         )
         .join("")}
@@ -270,12 +237,11 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
   }
 
   const handleAddStock = async () => {
-    if (newStock.name && newStock.price && newStock.stockAvailable && newStock.size) {
+    if (newStock.name && newStock.stockAvailable && newStock.size) {
       const newItem: StockItem = {
         id: `${currentWarehouse}-${Date.now()}`,
         name: newStock.name,
         image: newStock.image || getDefaultImage(),
-        price: Number.parseFloat(newStock.price),
         dateAdded: new Date().toISOString().split("T")[0],
         stockAvailable: Number.parseInt(newStock.stockAvailable),
         stockSold: 0,
@@ -291,7 +257,7 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
         const updatedItems = [newItem, ...currentItems]
         updateCurrentWarehouseData(updatedItems)
         
-        setNewStock({ name: "", image: "", price: "", stockAvailable: "", size: "" })
+        setNewStock({ name: "", image: "", stockAvailable: "", size: "" })
         setIsAddModalOpen(false)
       } catch (error) {
         console.error("Failed to add stock to Firestore:", error)
@@ -305,7 +271,6 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
       id: item.id,
       name: item.name,
       image: item.image,
-      price: item.price.toString(),
       stockAvailable: item.stockAvailable.toString(),
       size: item.size,
     })
@@ -314,12 +279,11 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
   }
 
   const handleUpdateStock = async () => {
-    if (editStock.name && editStock.price && editStock.stockAvailable && editStock.size) {
+    if (editStock.name && editStock.stockAvailable && editStock.size) {
       const updatedItem: StockItem = {
         id: editStock.id,
         name: editStock.name,
         image: editStock.image || getDefaultImage(),
-        price: Number.parseFloat(editStock.price),
         stockAvailable: Number.parseInt(editStock.stockAvailable),
         size: editStock.size,
         dateAdded: currentItems.find(item => item.id === editStock.id)?.dateAdded || new Date().toISOString().split("T")[0],
@@ -337,7 +301,7 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
         )
         updateCurrentWarehouseData(updatedItems)
         
-        setEditStock({ id: "", name: "", image: "", price: "", stockAvailable: "", size: "" })
+        setEditStock({ id: "", name: "", image: "", stockAvailable: "", size: "" })
         setIsEditModalOpen(false)
       } catch (error) {
         console.error("Failed to update stock in Firestore:", error)
@@ -345,7 +309,7 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
       }
     }
   }
-
+ 
   const handleDeleteStock = async (id: string) => {
     try {
       // Delete from Firestore with warehouse-specific collection
@@ -578,9 +542,6 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
                     {item.name}
                   </CardTitle>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 mb-2">
-                    <span className="text-lg sm:text-2xl font-bold text-slate-800">
-                      ₹{item.price.toLocaleString("en-IN")}
-                    </span>
                     <span className="text-xs sm:text-sm text-slate-500">
                       Added {new Date(item.dateAdded).toLocaleDateString()}
                     </span>
@@ -686,18 +647,6 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
                 </div>
               </div>
               <div>
-                <Label htmlFor="stock-price" className="text-sm sm:text-base">Price (₹) *</Label>
-                <Input
-                  id="stock-price"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={newStock.price}
-                  onChange={(e) => setNewStock({ ...newStock, price: e.target.value })}
-                  className="text-sm sm:text-base"
-                />
-              </div>
-              <div>
                 <Label htmlFor="stock-available" className="text-sm sm:text-base">Stock Available (SQFT) *</Label>
                 <Input
                   id="stock-available"
@@ -726,7 +675,7 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
               </Button>
               <Button
                 onClick={handleAddStock}
-                disabled={!newStock.name || !newStock.price || !newStock.stockAvailable || !newStock.size}
+                disabled={!newStock.name || !newStock.stockAvailable || !newStock.size}
                 className="bg-slate-800 hover:bg-slate-700 text-sm sm:text-base"
               >
                 Add to Warehouse {currentWarehouse}
@@ -803,18 +752,6 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
                 </div>
               </div>
               <div>
-                <Label htmlFor="edit-stock-price" className="text-sm sm:text-base">Price (₹) *</Label>
-                <Input
-                  id="edit-stock-price"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={editStock.price}
-                  onChange={(e) => setEditStock({ ...editStock, price: e.target.value })}
-                  className="text-sm sm:text-base"
-                />
-              </div>
-              <div>
                 <Label htmlFor="edit-stock-available" className="text-sm sm:text-base">Stock Available (SQFT) *</Label>
                 <Input
                   id="edit-stock-available"
@@ -843,7 +780,7 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
               </Button>
               <Button
                 onClick={handleUpdateStock}
-                disabled={!editStock.name || !editStock.price || !editStock.stockAvailable || !editStock.size}
+                disabled={!editStock.name || !editStock.stockAvailable || !editStock.size}
                 className="bg-slate-800 hover:bg-slate-700 text-sm sm:text-base"
               >
                 Update Stock Item
@@ -901,10 +838,6 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm sm:text-base">Price</Label>
-                    <p className="text-lg font-semibold">₹{detailViewItem.price.toLocaleString("en-IN")}</p>
-                  </div>
-                  <div>
                     <Label className="text-sm sm:text-base">Size</Label>
                     <p className="text-lg font-semibold">{detailViewItem.size}"</p>
                   </div>
@@ -919,12 +852,6 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
                   <div>
                     <Label className="text-sm sm:text-base">Date Added</Label>
                     <p className="text-lg font-semibold">{new Date(detailViewItem.dateAdded).toLocaleDateString()}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm sm:text-base">Total Value</Label>
-                    <p className="text-lg font-semibold">
-                      ₹{(detailViewItem.price * detailViewItem.stockAvailable).toLocaleString("en-IN")}
-                    </p>
                   </div>
                 </div>
                 <div className="space-y-4 pt-4 border-t">

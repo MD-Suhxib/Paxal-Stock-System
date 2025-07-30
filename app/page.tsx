@@ -15,11 +15,6 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { addStockToFirestore, deleteStockFromFirestore, updateStockInFirestore } from "@/lib/firestore"
-import { getDocs, collection } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-
-
 
 interface StockItem {
   id: string
@@ -42,8 +37,40 @@ export default function PaxalMultiWarehouseSystem() {
   const [currentWarehouse, setCurrentWarehouse] = useState<number>(1)
   const [isLoading, setIsLoading] = useState(true)
   const [warehouseData, setWarehouseData] = useState<WarehouseData>({
-    '1': [],
-    '2': [],
+    '1': [
+      {
+        id: '1-1',
+        name: 'Carrara White Marble',
+        image: '/placeholder.svg?height=300&width=400&text=Carrara+White+Marble',
+        dateAdded: '2024-01-15',
+        stockAvailable: 150,
+        stockSold: 50,
+        size: '2/3',
+        warehouse: 1
+      },
+      {
+        id: '1-2',
+        name: 'Black Galaxy Granite',
+        image: '/placeholder.svg?height=300&width=400&text=Black+Galaxy+Granite',
+        dateAdded: '2024-01-20',
+        stockAvailable: 200,
+        stockSold: 75,
+        size: '3/4',
+        warehouse: 1
+      }
+    ],
+    '2': [
+      {
+        id: '2-1',
+        name: 'Calacatta Gold Marble',
+        image: '/placeholder.svg?height=300&width=400&text=Calacatta+Gold+Marble',
+        dateAdded: '2024-01-10',
+        stockAvailable: 120,
+        stockSold: 30,
+        size: '1/2',
+        warehouse: 2
+      }
+    ],
     '3': [],
     '4': []
   })
@@ -76,7 +103,6 @@ export default function PaxalMultiWarehouseSystem() {
     stockAvailable: "",
     size: "",
   })
-  
 
   const getDefaultImage = () => "/placeholder.svg?height=300&width=400&text=No+Image"
 
@@ -85,48 +111,17 @@ export default function PaxalMultiWarehouseSystem() {
       warehouses: data,
       lastUpdated: new Date().toISOString(),
     }
-    // Using memory storage only as per Claude.ai requirements
     console.log('Data would be saved to storage:', storageData)
   }
 
   const loadFromStorage = (): WarehouseData => {
-    // Using memory storage only as per Claude.ai requirements
     return { '1': [], '2': [], '3': [], '4': [] }
   }
 
-  // Load data from Firestore for all warehouses
   useEffect(() => {
     const initializeApp = async () => {
-      try {
-        const warehouseCollections = ['1', '2', '3', '4']
-        const allWarehouseData: WarehouseData = { '1': [], '2': [], '3': [], '4': [] }
-
-        // Load data for each warehouse
-        for (const warehouseNum of warehouseCollections) {
-          try {
-            const snapshot = await getDocs(collection(db, `warehouse${warehouseNum}-stocks`))
-            const items = snapshot.docs.map((doc) => ({
-              ...doc.data() as Omit<StockItem, 'warehouse'>,
-              warehouse: parseInt(warehouseNum)
-            }))
-            allWarehouseData[warehouseNum] = items
-          } catch (error) {
-            console.error(`Failed to fetch stock from Warehouse ${warehouseNum}:`, error)
-            allWarehouseData[warehouseNum] = []
-          }
-        }
-
-        setWarehouseData(allWarehouseData)
-        setIsLoading(false)
-      } catch (error) {
-        console.error("Failed to initialize warehouses:", error)
-        // Fallback to local storage if Firestore fails
-        const localData = loadFromStorage()
-        setWarehouseData(localData)
-        setIsLoading(false)
-      }
+      setIsLoading(false)
     }
-
     initializeApp()
   }, [])
 
@@ -175,44 +170,226 @@ export default function PaxalMultiWarehouseSystem() {
   const exportToPDF = async () => {
     setIsExportingPDF(true)
     const currentItems = getCurrentStockItems()
+    
     try {
-      const pdfContent = `
-PAXAL MARBLES & GRANITES
-Warehouse ${currentWarehouse} - Stock Management Report
-Generated on: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+      // Create HTML content for PDF
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Paxal Warehouse ${currentWarehouse} Stock Report</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                color: #333;
+              }
+              .header {
+                text-align: center;
+                margin-bottom: 30px;
+                border-bottom: 2px solid #333;
+                padding-bottom: 20px;
+              }
+              .company-name {
+                font-size: 24px;
+                font-weight: bold;
+                color: #1e293b;
+                margin-bottom: 5px;
+              }
+              .report-title {
+                font-size: 18px;
+                color: #64748b;
+                margin-bottom: 10px;
+              }
+              .report-date {
+                font-size: 14px;
+                color: #64748b;
+              }
+              .summary {
+                background-color: #f8fafc;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 25px;
+                border: 1px solid #e2e8f0;
+              }
+              .summary h3 {
+                margin: 0 0 10px 0;
+                color: #1e293b;
+                font-size: 16px;
+              }
+              .summary-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 15px;
+              }
+              .summary-item {
+                text-align: center;
+              }
+              .summary-value {
+                font-size: 20px;
+                font-weight: bold;
+                color: #1e293b;
+              }
+              .summary-label {
+                font-size: 12px;
+                color: #64748b;
+                margin-top: 2px;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+              }
+              th {
+                background-color: #1e293b;
+                color: white;
+                padding: 12px 8px;
+                text-align: left;
+                font-weight: bold;
+                font-size: 14px;
+              }
+              td {
+                padding: 10px 8px;
+                border-bottom: 1px solid #e2e8f0;
+                font-size: 13px;
+              }
+              tr:nth-child(even) {
+                background-color: #f8fafc;
+              }
+              tr:hover {
+                background-color: #f1f5f9;
+              }
+              .stock-available {
+                color: #059669;
+                font-weight: 600;
+              }
+              .stock-sold {
+                color: #2563eb;
+                font-weight: 600;
+              }
+              .size-badge {
+                background-color: #e2e8f0;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 600;
+              }
+              .footer {
+                margin-top: 30px;
+                text-align: center;
+                font-size: 12px;
+                color: #64748b;
+                border-top: 1px solid #e2e8f0;
+                padding-top: 15px;
+              }
+              .no-data {
+                text-align: center;
+                padding: 40px;
+                color: #64748b;
+                font-style: italic;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div class="company-name">PAXAL MARBLES & GRANITES</div>
+              <div class="report-title">Warehouse ${currentWarehouse} - Stock Management Report</div>
+              
+            </div>
 
-SUMMARY STATISTICS
-=================
-Total Items: ${currentItems.length}
-Total Stock Available: ${currentItems.reduce((sum, item) => sum + item.stockAvailable, 0)} SQFT
-Total Stock Sold: ${currentItems.reduce((sum, item) => sum + item.stockSold, 0)} SQFT
+            <div class="summary">
+              <h3>Summary Statistics</h3>
+              <div class="summary-grid">
+                <div class="summary-item">
+                  <div class="summary-value">${currentItems.length}</div>
+                  <div class="summary-label">Total Items</div>
+                </div>
+                <div class="summary-item">
+                  <div class="summary-value">${currentItems.reduce((sum, item) => sum + item.stockAvailable, 0)}</div>
+                  <div class="summary-label">Stock Available (SQFT)</div>
+                </div>
+                <div class="summary-item">
+                  <div class="summary-value">${currentItems.reduce((sum, item) => sum + item.stockSold, 0)}</div>
+                  <div class="summary-label">Stock Sold (SQFT)</div>
+                </div>
+              </div>
+            </div>
 
-STOCK DETAILS
-=============
-${currentItems
-        .map(
-          (item, index) => `
-${index + 1}. ${item.name}
-   Size: ${item.size}"
-   Available: ${item.stockAvailable} SQFT
-   Sold: ${item.stockSold} SQFT
-   Date Added: ${new Date(item.dateAdded).toLocaleDateString()}
-`,
-        )
-        .join("")}
+            ${currentItems.length === 0 ? `
+              <div class="no-data">
+                No stock items found in Warehouse ${currentWarehouse}
+              </div>
+            ` : `
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 30%;">Stock Name</th>
+                    <th style="width: 12%;">Size</th>
+                    <th style="width: 15%;">Date Added</th>
+                    <th style="width: 15%;">Available (SQFT)</th>
+                    <th style="width: 13%;">Sold (SQFT)</th>
+                    <th style="width: 10%;">Total (SQFT)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${currentItems.map((item, index) => `
+                    <tr>
+                      <td>${index + 1}</td>
+                      <td><strong>${item.name}</strong></td>
+                      <td><span class="size-badge">${item.size}"</span></td>
+                      <td>${new Date(item.dateAdded).toLocaleDateString()}</td>
+                      <td class="stock-available">${item.stockAvailable}</td>
+                      <td class="stock-sold">${item.stockSold}</td>
+                      <td><strong>${item.stockAvailable + item.stockSold}</strong></td>
+                    </tr>
+                  `).join('')}
+                  <tr style="background-color: #f1f5f9; border-top: 2px solid #1e293b; font-weight: bold;">
+                    <td colspan="4" style="text-align: right; padding-right: 10px;">TOTALS:</td>
+                    <td class="stock-available">${currentItems.reduce((sum, item) => sum + item.stockAvailable, 0)}</td>
+                    <td class="stock-sold">${currentItems.reduce((sum, item) => sum + item.stockSold, 0)}</td>
+                    <td><strong>${currentItems.reduce((sum, item) => sum + item.stockAvailable + item.stockSold, 0)}</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+            `}
 
----
-Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
+            <div class="footer">
+              <div>Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential Document</div>
+      
+            </div>
+          </body>
+        </html>
       `
-      const blob = new Blob([pdfContent], { type: "text/plain" })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `Paxal_Warehouse${currentWarehouse}_Stock_Report_${new Date().toISOString().split("T")[0]}.txt`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+
+      // Convert HTML to PDF using browser's print functionality
+      const printWindow = window.open('', '_blank')
+      if (printWindow) {
+        printWindow.document.write(htmlContent)
+        printWindow.document.close()
+        
+        // Wait for content to load
+        printWindow.onload = () => {
+          // Trigger print dialog which allows saving as PDF
+          printWindow.print()
+          printWindow.close()
+        }
+      } else {
+        // Fallback: create downloadable HTML file
+        const blob = new Blob([htmlContent], { type: 'text/html' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `Paxal_Warehouse${currentWarehouse}_Stock_Report_${new Date().toISOString().split('T')[0]}.html`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        
+        alert('PDF export opened in a new window. If blocked by popup blocker, an HTML file has been downloaded instead. You can open the HTML file and use your browser\'s "Print to PDF" feature.')
+      }
     } catch (error) {
       console.error("Error generating PDF:", error)
       alert("Failed to generate PDF. Please try again.")
@@ -249,17 +426,13 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
       }
       
       try {
-        // Add to Firestore with warehouse-specific collection
-        await addStockToFirestore(newItem, `warehouse${currentWarehouse}-stocks`)
-        
-        // Update local state
         const updatedItems = [newItem, ...currentItems]
         updateCurrentWarehouseData(updatedItems)
         
         setNewStock({ name: "", image: "", stockAvailable: "", size: "" })
         setIsAddModalOpen(false)
       } catch (error) {
-        console.error("Failed to add stock to Firestore:", error)
+        console.error("Failed to add stock:", error)
         alert("Failed to add stock. Please try again.")
       }
     }
@@ -291,10 +464,6 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
       }
 
       try {
-        // Update in Firestore with warehouse-specific collection
-        await updateStockInFirestore(updatedItem, `warehouse${currentWarehouse}-stocks`)
-        
-        // Update local state
         const updatedItems = currentItems.map((item) =>
           item.id === editStock.id ? updatedItem : item
         )
@@ -303,7 +472,7 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
         setEditStock({ id: "", name: "", image: "", stockAvailable: "", size: "" })
         setIsEditModalOpen(false)
       } catch (error) {
-        console.error("Failed to update stock in Firestore:", error)
+        console.error("Failed to update stock:", error)
         alert("Failed to update stock. Please try again.")
       }
     }
@@ -311,16 +480,12 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
  
   const handleDeleteStock = async (id: string) => {
     try {
-      // Delete from Firestore with warehouse-specific collection
-      await deleteStockFromFirestore(id, `warehouse${currentWarehouse}-stocks`)
-      
-      // Update local state
       const updatedItems = currentItems.filter((item) => item.id !== id)
       updateCurrentWarehouseData(updatedItems)
       
       setDeleteConfirmation({ isOpen: false, itemId: "", itemName: "" })
     } catch (error) {
-      console.error("Failed to delete stock from Firestore:", error)
+      console.error("Failed to delete stock:", error)
       alert("Failed to delete stock. Please try again.")
     }
   }
@@ -339,10 +504,6 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
         }
 
         try {
-          // Update in Firestore with warehouse-specific collection
-          await updateStockInFirestore(updatedItem, `warehouse${currentWarehouse}-stocks`)
-          
-          // Update local state
           const updatedItems = currentItems.map((item) =>
             item.id === detailViewItem.id ? updatedItem : item,
           )
@@ -350,7 +511,7 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
           setSellQuantity("")
           setDetailViewItem(updatedItem)
         } catch (error) {
-          console.error("Failed to update stock in Firestore:", error)
+          console.error("Failed to update stock:", error)
           alert("Failed to sell stock. Please try again.")
         }
       }
@@ -369,10 +530,6 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
         }
 
         try {
-          // Update in Firestore with warehouse-specific collection
-          await updateStockInFirestore(updatedItem, `warehouse${currentWarehouse}-stocks`)
-          
-          // Update local state
           const updatedItems = currentItems.map((item) =>
             item.id === detailViewItem.id ? updatedItem : item,
           )
@@ -380,7 +537,7 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
           setAddQuantity("")
           setDetailViewItem(updatedItem)
         } catch (error) {
-          console.error("Failed to update stock in Firestore:", error)
+          console.error("Failed to update stock:", error)
           alert("Failed to add stock. Please try again.")
         }
       }
@@ -480,7 +637,7 @@ Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <Button
               onClick={exportToPDF}
-              disabled={isExportingPDF || currentItems.length === 0}
+              disabled={isExportingPDF}
               className="h-10 sm:h-12 px-4 sm:px-6 bg-green-600 hover:bg-green-700 text-sm sm:text-base flex-1 sm:flex-none"
             >
               {isExportingPDF ? (

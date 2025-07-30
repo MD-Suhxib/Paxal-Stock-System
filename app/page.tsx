@@ -18,7 +18,6 @@ import { Badge } from "@/components/ui/badge"
 import { addStockToFirestore, deleteStockFromFirestore, updateStockInFirestore } from "@/lib/firestore"
 import { getDocs, collection } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { exportWarehouseToPDF } from "@/lib/pdfUtils"
 
 
 

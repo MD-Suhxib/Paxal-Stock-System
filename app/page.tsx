@@ -339,7 +339,6 @@ export default function PaxalMultiWarehouseSystem() {
           <div class="header">
             <div class="company-name">PAXAL MARBLES & GRANITES</div>
             <div class="report-title">📦 Available Stock Inventory Report</div>
-            <div class="report-date">Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</div>
           </div>
 
           <div class="summary">
@@ -393,7 +392,6 @@ export default function PaxalMultiWarehouseSystem() {
           <div class="footer">
             <div>Paxal Marbles & Granites - Available Stock Report - Confidential Document</div>
             <div>Report shows only items with available stock > 0 SQFT</div>
-            <div>Report generated automatically on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</div>
           </div>
         </body>
       </html>
@@ -609,7 +607,6 @@ export default function PaxalMultiWarehouseSystem() {
             <div class="header">
               <div class="company-name">PAXAL MARBLES & GRANITES</div>
               <div class="report-title">Complete System Stock Overview - All Warehouses</div>
-              <div class="report-date">Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</div>
             </div>
 
             <div class="summary">
@@ -684,7 +681,6 @@ export default function PaxalMultiWarehouseSystem() {
 
             <div class="footer">
               <div>Paxal Marbles & Granites - Complete System Stock Report - Confidential Document</div>
-              <div>Report generated automatically on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</div>
             </div>
           </body>
         </html>
@@ -853,7 +849,6 @@ export default function PaxalMultiWarehouseSystem() {
             <div class="header">
               <div class="company-name">PAXAL MARBLES & GRANITES</div>
               <div class="report-title">Warehouse ${currentWarehouse} - Stock Management Report</div>
-              <div class="report-date">Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</div>
             </div>
 
             <div class="summary">
@@ -915,7 +910,6 @@ export default function PaxalMultiWarehouseSystem() {
 
             <div class="footer">
               <div>Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential Document</div>
-              <div>Report generated automatically on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</div>
             </div>
           </body>
         </html>

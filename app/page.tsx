@@ -50,6 +50,7 @@ export default function PaxalMultiWarehouseSystem() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isExportingPDF, setIsExportingPDF] = useState(false)
   const [isExportingSystemPDF, setIsExportingSystemPDF] = useState(false)
+  const [isExportingAvailableStock, setIsExportingAvailableStock] = useState(false)
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean
     itemId: string
@@ -128,42 +129,6 @@ export default function PaxalMultiWarehouseSystem() {
     initializeApp()
   }, [])
 
-  // Load data from Firestore for all warehouses
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        const warehouseCollections = ['1', '2', '3', '4']
-        const allWarehouseData: WarehouseData = { '1': [], '2': [], '3': [], '4': [] }
-
-        // Load data for each warehouse
-        for (const warehouseNum of warehouseCollections) {
-          try {
-            const snapshot = await getDocs(collection(db, `warehouse${warehouseNum}-stocks`))
-            const items = snapshot.docs.map((doc) => ({
-              ...doc.data() as Omit<StockItem, 'warehouse'>,
-              warehouse: parseInt(warehouseNum)
-            }))
-            allWarehouseData[warehouseNum] = items
-          } catch (error) {
-            console.error(`Failed to fetch stock from Warehouse ${warehouseNum}:`, error)
-            allWarehouseData[warehouseNum] = []
-          }
-        }
-
-        setWarehouseData(allWarehouseData)
-        setIsLoading(false)
-      } catch (error) {
-        console.error("Failed to initialize warehouses:", error)
-        // Fallback to local storage if Firestore fails
-        const localData = loadFromStorage()
-        setWarehouseData(localData)
-        setIsLoading(false)
-      }
-    }
-
-    initializeApp()
-  }, [])
-
   useEffect(() => {
     if (!isLoading) {
       console.log("Saving updated warehouse data:", warehouseData)
@@ -205,6 +170,268 @@ export default function PaxalMultiWarehouseSystem() {
       reader.readAsDataURL(file)
     }
   }
+
+  const exportAvailableStockToPDF = async () => {
+  setIsExportingAvailableStock(true)
+  
+  try {
+    // Collect only items with available stock from all warehouses
+    const allAvailableItems: Array<StockItem & { warehouseNumber: number }> = []
+    
+    Object.keys(warehouseData).forEach(warehouseKey => {
+      const items = warehouseData[warehouseKey] || []
+      items.forEach(item => {
+        if (item.stockAvailable > 0) { // Only include items with available stock
+          allAvailableItems.push({
+            ...item,
+            warehouseNumber: parseInt(warehouseKey)
+          })
+        }
+      })
+    })
+
+    // Sort by stock name alphabetically
+    allAvailableItems.sort((a, b) => a.name.localeCompare(b.name))
+
+    // Calculate totals
+    const totalAvailableItems = allAvailableItems.length
+    const totalAvailableStock = allAvailableItems.reduce((sum, item) => sum + item.stockAvailable, 0)
+
+    // Create HTML content for available stock PDF
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Paxal Available Stock Report</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              margin: 20px;
+              color: #333;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+              border-bottom: 2px solid #059669;
+              padding-bottom: 20px;
+            }
+            .company-name {
+              font-size: 24px;
+              font-weight: bold;
+              color: #1e293b;
+              margin-bottom: 5px;
+            }
+            .report-title {
+              font-size: 18px;
+              color: #059669;
+              margin-bottom: 10px;
+              font-weight: bold;
+            }
+            .report-date {
+              font-size: 14px;
+              color: #64748b;
+            }
+            .summary {
+              background-color: #ecfdf5;
+              padding: 15px;
+              border-radius: 8px;
+              margin-bottom: 25px;
+              border: 1px solid #bbf7d0;
+            }
+            .summary h3 {
+              margin: 0 0 10px 0;
+              color: #059669;
+              font-size: 16px;
+            }
+            .summary-grid {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 20px;
+            }
+            .summary-item {
+              text-align: center;
+            }
+            .summary-value {
+              font-size: 24px;
+              font-weight: bold;
+              color: #059669;
+            }
+            .summary-label {
+              font-size: 14px;
+              color: #064e3b;
+              margin-top: 5px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+              margin-bottom: 20px;
+            }
+            th {
+              background-color: #10b981;
+              color: white;
+              padding: 12px 15px;
+              text-align: left;
+              font-weight: bold;
+              font-size: 14px;
+            }
+            td {
+              padding: 12px 15px;
+              border-bottom: 1px solid #e2e8f0;
+              font-size: 14px;
+            }
+            tr:nth-child(even) {
+              background-color: #f0fdf4;
+            }
+            tr:hover {
+              background-color: #dcfce7;
+            }
+            .stock-available {
+              color: #059669;
+              font-weight: 600;
+              text-align: right;
+            }
+            .warehouse-cell {
+              text-align: center;
+              font-weight: bold;
+              color: #1e293b;
+              background-color: #f1f5f9;
+            }
+            .grand-total {
+              background-color: #059669 !important;
+              color: white !important;
+              font-weight: bold;
+              font-size: 16px;
+            }
+            .grand-total td {
+              color: white !important;
+              font-weight: bold;
+              padding: 15px;
+            }
+            .footer {
+              margin-top: 30px;
+              text-align: center;
+              font-size: 12px;
+              color: #64748b;
+              border-top: 1px solid #e2e8f0;
+              padding-top: 15px;
+            }
+            .no-data {
+              text-align: center;
+              padding: 20px;
+              color: #64748b;
+              font-style: italic;
+              background-color: #f8fafc;
+            }
+            .available-badge {
+              background-color: #dcfce7;
+              color: #166534;
+              padding: 4px 8px;
+              border-radius: 12px;
+              font-size: 12px;
+              font-weight: bold;
+              display: inline-block;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="company-name">PAXAL MARBLES & GRANITES</div>
+            <div class="report-title">📦 Available Stock Inventory Report</div>
+            <div class="report-date">Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</div>
+          </div>
+
+          <div class="summary">
+            <h3>Available Stock Summary</h3>
+            <div class="summary-grid">
+              <div class="summary-item">
+                <div class="summary-value">${totalAvailableItems}</div>
+                <div class="summary-label">Items with Available Stock</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-value">${totalAvailableStock}</div>
+                <div class="summary-label">Total Available Stock (SQFT)</div>
+              </div>
+            </div>
+          </div>
+
+          ${totalAvailableItems === 0 ? `
+            <div class="no-data">
+              No available stock found in any warehouse
+            </div>
+          ` : `
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 8%;">#</th>
+                  <th style="width: 10%;">Warehouse</th>
+                  <th style="width: 60%;">Stock Name</th>
+                  <th style="width: 22%;">Available Stock (SQFT)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${allAvailableItems.map((item, index) => `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td class="warehouse-cell">${item.warehouseNumber}</td>
+                    <td>
+                      <strong>${item.name}</strong>
+                      <span class="available-badge">✓ In Stock</span>
+                    </td>
+                    <td class="stock-available">${item.stockAvailable}</td>
+                  </tr>
+                `).join('')}
+                <tr class="grand-total">
+                  <td colspan="3" style="text-align: right;">TOTAL AVAILABLE STOCK - ALL WAREHOUSES:</td>
+                  <td style="text-align: right;">${totalAvailableStock} SQFT</td>
+                </tr>
+              </tbody>
+            </table>
+          `}
+
+          <div class="footer">
+            <div>Paxal Marbles & Granites - Available Stock Report - Confidential Document</div>
+            <div>Report shows only items with available stock > 0 SQFT</div>
+            <div>Report generated automatically on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</div>
+          </div>
+        </body>
+      </html>
+    `
+
+    // Convert HTML to PDF using browser's print functionality
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(htmlContent)
+      printWindow.document.close()
+      
+      // Wait for content to load
+      printWindow.onload = () => {
+        // Trigger print dialog which allows saving as PDF
+        printWindow.print()
+        printWindow.close()
+      }
+    } else {
+      // Fallback: create downloadable HTML file
+      const blob = new Blob([htmlContent], { type: 'text/html' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Paxal_Available_Stock_Report_${new Date().toISOString().split('T')[0]}.html`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      alert('PDF export opened in a new window. If blocked by popup blocker, an HTML file has been downloaded instead. You can open the HTML file and use your browser\'s "Print to PDF" feature.')
+    }
+  } catch (error) {
+    console.error("Error generating available stock PDF:", error)
+    alert("Failed to generate available stock PDF. Please try again.")
+  } finally {
+    setIsExportingAvailableStock(false)
+  }
+}
 
   const exportSystemStockToPDF = async () => {
     setIsExportingSystemPDF(true)
@@ -937,24 +1164,25 @@ export default function PaxalMultiWarehouseSystem() {
             </div>
             
             {/* Warehouse Selection Buttons */}
-            <div className="flex flex-wrap gap-2 justify-center sm:justify-end">
+            <div className="flex flex-wrap gap-1 sm:gap-2 justify-center sm:justify-end">
               {[1, 2, 3, 4].map((warehouseNum) => (
                 <Button
                   key={warehouseNum}
                   onClick={() => handleWarehouseChange(warehouseNum)}
                   variant={currentWarehouse === warehouseNum ? "default" : "outline"}
                   size="sm"
-                  className={`h-8 px-3 text-xs sm:text-sm ${
+                  className={`h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm ${
                     currentWarehouse === warehouseNum 
                       ? "bg-slate-800 hover:bg-slate-700" 
                       : "hover:bg-slate-100"
                   }`}
                 >
-                  <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                  Warehouse {warehouseNum}
+                  <Building2 className="h-3 w-3 mr-1" />
+                  <span className="hidden sm:inline">Warehouse</span>
+                  <span className="sm:hidden">WH</span> {warehouseNum}
                   <Badge 
                     variant="secondary" 
-                    className="ml-2 text-xs bg-slate-100 text-slate-700"
+                    className="ml-1 sm:ml-2 text-xs bg-slate-100 text-slate-700 px-1"
                   >
                     {warehouseData[warehouseNum.toString()]?.length || 0}
                   </Badge>
@@ -975,40 +1203,81 @@ export default function PaxalMultiWarehouseSystem() {
 
         <div className="flex flex-col gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-3 w-3 sm:h-4 sm:w-4" />
             <Input
               type="text"
               placeholder={`Search stock items in Warehouse ${currentWarehouse}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-10 sm:h-12 text-sm sm:text-lg"
+              className="pl-8 sm:pl-10 h-10 sm:h-12 text-sm sm:text-base lg:text-lg"
             />
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <Button
-              onClick={exportToPDF}
-              disabled={isExportingPDF}
-              className="h-10 sm:h-12 px-4 sm:px-6 bg-green-600 hover:bg-green-700 text-sm sm:text-base flex-1 sm:flex-none"
-            >
-              {isExportingPDF ? (
-                <>
-                  <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Exporting...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Warehouse {currentWarehouse} to PDF
-                </>
-              )}
-            </Button>
-            <Button
-              onClick={() => setIsAddModalOpen(true)}
-              className="h-10 sm:h-12 px-4 sm:px-6 bg-slate-800 hover:bg-slate-700 text-sm sm:text-base flex-1 sm:flex-none"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Stock to Warehouse {currentWarehouse}
-            </Button>
+          <div className="flex flex-col gap-2">
+            {/* Main Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <Button
+                onClick={exportToPDF}
+                disabled={isExportingPDF}
+                className="h-10 sm:h-12 px-4 sm:px-6 bg-green-600 hover:bg-green-700 text-sm sm:text-base flex-1 sm:flex-none"
+              >
+                {isExportingPDF ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Warehouse {currentWarehouse} to PDF
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => setIsAddModalOpen(true)}
+                className="h-10 sm:h-12 px-4 sm:px-6 bg-slate-800 hover:bg-slate-700 text-sm sm:text-base flex-1 sm:flex-none"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Stock to Warehouse {currentWarehouse}
+              </Button>
+            </div>
+            
+            {/* System-Wide Export Buttons */}
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <Button
+                onClick={exportAvailableStockToPDF}
+                disabled={isExportingAvailableStock}
+                className="h-8 sm:h-10 px-3 sm:px-4 bg-emerald-500 hover:bg-emerald-600 text-xs sm:text-sm flex-1 sm:flex-none border border-emerald-300"
+              >
+                {isExportingAvailableStock ? (
+                  <>
+                    <div className="w-3 h-3 mr-1 sm:mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <span className="mr-1 sm:mr-2">📦</span>
+                    Available Stock Only (All Warehouses)
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={exportSystemStockToPDF}
+                disabled={isExportingSystemPDF}
+                className="h-8 sm:h-10 px-3 sm:px-4 bg-slate-600 hover:bg-slate-700 text-xs sm:text-sm flex-1 sm:flex-none border border-slate-400"
+              >
+                {isExportingSystemPDF ? (
+                  <>
+                    <div className="w-3 h-3 mr-1 sm:mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    Complete System Report (All Warehouses)
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -1027,7 +1296,7 @@ export default function PaxalMultiWarehouseSystem() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
             {filteredItems.map((item) => (
               <Card
                 key={item.id}
@@ -1043,11 +1312,11 @@ export default function PaxalMultiWarehouseSystem() {
                     />
                   </div>
                 </CardHeader>
-                <CardContent className="p-3 sm:p-4">
-                  <CardTitle className="text-base sm:text-lg font-semibold text-slate-900 mb-2 line-clamp-2">
+                <CardContent className="p-2 sm:p-3 lg:p-4">
+                  <CardTitle className="text-sm sm:text-base lg:text-lg font-semibold text-slate-900 mb-2 line-clamp-2">
                     {item.name}
                   </CardTitle>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 mb-2">
+                  <div className="flex flex-col gap-1 mb-2">
                     <span className="text-xs sm:text-sm text-slate-500">
                       Added {new Date(item.dateAdded).toLocaleDateString()}
                     </span>
@@ -1057,12 +1326,12 @@ export default function PaxalMultiWarehouseSystem() {
                       Size: {item.size}"
                     </span>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 text-xs sm:text-sm">
+                  <div className="flex flex-col gap-1 text-xs sm:text-sm">
                     <span className="text-green-600 font-medium">Available: {item.stockAvailable} SQFT</span>
                     <span className="text-blue-600 font-medium">Sold: {item.stockSold} SQFT</span>
                   </div>
                 </CardContent>
-                <CardFooter className="p-3 sm:p-4 pt-0">
+                <CardFooter className="p-2 sm:p-3 lg:p-4 pt-0">
                   <Button
                     variant="destructive"
                     size="sm"
@@ -1074,10 +1343,10 @@ export default function PaxalMultiWarehouseSystem() {
                         itemName: item.name,
                       })
                     }}
-                    className="w-full text-xs sm:text-sm"
+                    className="w-full text-xs sm:text-sm h-8 sm:h-9"
                   >
-                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                    Delete Stock
+                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    Delete
                   </Button>
                 </CardFooter>
               </Card>
@@ -1184,7 +1453,6 @@ export default function PaxalMultiWarehouseSystem() {
                 disabled={!newStock.name || !newStock.stockAvailable || !newStock.size}
                 className="bg-slate-800 hover:bg-slate-700 text-sm sm:text-base"
               >
-                Add to Warehouse {currentWarehouse}
               </Button>
             </DialogFooter>
           </DialogContent>

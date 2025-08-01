@@ -713,225 +713,225 @@ export default function PaxalMultiWarehouseSystem() {
       setIsExportingSystemPDF(false)
     }
   }
+const exportToPDF = async () => {
+  setIsExportingPDF(true)
+  const currentItems = getCurrentStockItems()
+  
+  try {
+    // Create HTML content for PDF
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Paxal Warehouse ${currentWarehouse} Stock Report</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              margin: 20px;
+              color: #333;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+              border-bottom: 2px solid #333;
+              padding-bottom: 20px;
+            }
+            .company-name {
+              font-size: 24px;
+              font-weight: bold;
+              color: #1e293b;
+              margin-bottom: 5px;
+            }
+            .report-title {
+              font-size: 18px;
+              color: #64748b;
+              margin-bottom: 10px;
+            }
+            .report-date {
+              font-size: 14px;
+              color: #64748b;
+            }
+            .summary {
+              background-color: #f8fafc;
+              padding: 15px;
+              border-radius: 8px;
+              margin-bottom: 25px;
+              border: 1px solid #e2e8f0;
+            }
+            .summary h3 {
+              margin: 0 0 10px 0;
+              color: #1e293b;
+              font-size: 16px;
+            }
+            .summary-grid {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 15px;
+            }
+            .summary-item {
+              text-align: center;
+            }
+            .summary-value {
+              font-size: 20px;
+              font-weight: bold;
+              color: #1e293b;
+            }
+            .summary-label {
+              font-size: 12px;
+              color: #64748b;
+              margin-top: 2px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 20px;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            th {
+              background-color: #1e293b;
+              color: white;
+              padding: 12px 8px;
+              text-align: left;
+              font-weight: bold;
+              font-size: 14px;
+            }
+            td {
+              padding: 10px 8px;
+              border-bottom: 1px solid #e2e8f0;
+              font-size: 13px;
+            }
+            tr:nth-child(even) {
+              background-color: #f8fafc;
+            }
+            tr:hover {
+              background-color: #f1f5f9;
+            }
+            .stock-available {
+              color: #059669;
+              font-weight: 600;
+            }
+            .stock-sold {
+              color: #2563eb;
+              font-weight: 600;
+            }
+            .size-badge {
+              background-color: #e2e8f0;
+              padding: 4px 8px;
+              border-radius: 4px;
+              font-size: 12px;
+              font-weight: 600;
+            }
+            .footer {
+              margin-top: 30px;
+              text-align: center;
+              font-size: 12px;
+              color: #64748b;
+              border-top: 1px solid #e2e8f0;
+              padding-top: 15px;
+            }
+            .no-data {
+              text-align: center;
+              padding: 40px;
+              color: #64748b;
+              font-style: italic;
+            }
+            .print-instruction {
+              background-color: #fef3c7;
+              border: 1px solid #f59e0b;
+              padding: 15px;
+              border-radius: 8px;
+              margin: 20px 0;
+              text-align: center;
+              color: #92400e;
+            }
+          </style>
+        </head>
+        <body>
+          
+          
+          <div class="header">
+            <div class="company-name">PAXAL MARBLES & GRANITES</div>
+            <div class="report-title">Warehouse ${currentWarehouse} - Stock Management Report</div>
+          </div>
 
-  const exportToPDF = async () => {
-    setIsExportingPDF(true)
-    const currentItems = getCurrentStockItems()
-    
-    try {
-      // Create HTML content for PDF
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <title>Paxal Warehouse ${currentWarehouse} Stock Report</title>
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                margin: 20px;
-                color: #333;
-              }
-              .header {
-                text-align: center;
-                margin-bottom: 30px;
-                border-bottom: 2px solid #333;
-                padding-bottom: 20px;
-              }
-              .company-name {
-                font-size: 24px;
-                font-weight: bold;
-                color: #1e293b;
-                margin-bottom: 5px;
-              }
-              .report-title {
-                font-size: 18px;
-                color: #64748b;
-                margin-bottom: 10px;
-              }
-              .report-date {
-                font-size: 14px;
-                color: #64748b;
-              }
-              .summary {
-                background-color: #f8fafc;
-                padding: 15px;
-                border-radius: 8px;
-                margin-bottom: 25px;
-                border: 1px solid #e2e8f0;
-              }
-              .summary h3 {
-                margin: 0 0 10px 0;
-                color: #1e293b;
-                font-size: 16px;
-              }
-              .summary-grid {
-                display: grid;
-                grid-template-columns: repeat(3, 1fr);
-                gap: 15px;
-              }
-              .summary-item {
-                text-align: center;
-              }
-              .summary-value {
-                font-size: 20px;
-                font-weight: bold;
-                color: #1e293b;
-              }
-              .summary-label {
-                font-size: 12px;
-                color: #64748b;
-                margin-top: 2px;
-              }
-              table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 20px;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-              }
-              th {
-                background-color: #1e293b;
-                color: white;
-                padding: 12px 8px;
-                text-align: left;
-                font-weight: bold;
-                font-size: 14px;
-              }
-              td {
-                padding: 10px 8px;
-                border-bottom: 1px solid #e2e8f0;
-                font-size: 13px;
-              }
-              tr:nth-child(even) {
-                background-color: #f8fafc;
-              }
-              tr:hover {
-                background-color: #f1f5f9;
-              }
-              .stock-available {
-                color: #059669;
-                font-weight: 600;
-              }
-              .stock-sold {
-                color: #2563eb;
-                font-weight: 600;
-              }
-              .size-badge {
-                background-color: #e2e8f0;
-                padding: 4px 8px;
-                border-radius: 4px;
-                font-size: 12px;
-                font-weight: 600;
-              }
-              .footer {
-                margin-top: 30px;
-                text-align: center;
-                font-size: 12px;
-                color: #64748b;
-                border-top: 1px solid #e2e8f0;
-                padding-top: 15px;
-              }
-              .no-data {
-                text-align: center;
-                padding: 40px;
-                color: #64748b;
-                font-style: italic;
-              }
-              .print-instruction {
-                background-color: #fef3c7;
-                border: 1px solid #f59e0b;
-                padding: 15px;
-                border-radius: 8px;
-                margin: 20px 0;
-                text-align: center;
-                color: #92400e;
-              }
-            </style>
-          </head>
-          <body>
-            
-            
-            <div class="header">
-              <div class="company-name">PAXAL MARBLES & GRANITES</div>
-              <div class="report-title">Warehouse ${currentWarehouse} - Stock Management Report</div>
-            </div>
-
-            <div class="summary">
-              <h3>Summary Statistics</h3>
-              <div class="summary-grid">
-                <div class="summary-item">
-                  <div class="summary-value">${currentItems.length}</div>
-                  <div class="summary-label">Total Items</div>
-                </div>
-                <div class="summary-item">
-                  <div class="summary-value">${currentItems.reduce((sum, item) => sum + item.stockAvailable, 0)}</div>
-                  <div class="summary-label">Stock Available (SQFT)</div>
-                </div>
-                <div class="summary-item">
-                  <div class="summary-value">${currentItems.reduce((sum, item) => sum + item.stockSold, 0)}</div>
-                  <div class="summary-label">Stock Sold (SQFT)</div>
-                </div>
+          <div class="summary">
+            <h3>Summary Statistics</h3>
+            <div class="summary-grid">
+              <div class="summary-item">
+                <div class="summary-value">${currentItems.length}</div>
+                <div class="summary-label">Total Items</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-value">${currentItems.reduce((sum, item) => sum + item.stockAvailable, 0)}</div>
+                <div class="summary-label">Stock Available (SQFT)</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-value">${currentItems.reduce((sum, item) => sum + item.stockSold, 0)}</div>
+                <div class="summary-label">Stock Sold (SQFT)</div>
               </div>
             </div>
+          </div>
 
-            ${currentItems.length === 0 ? `
-              <div class="no-data">
-                No stock items found in Warehouse ${currentWarehouse}
-              </div>
-            ` : `
-              <table>
-                <thead>
+          ${currentItems.length === 0 ? `
+            <div class="no-data">
+              No stock items found in Warehouse ${currentWarehouse}
+            </div>
+          ` : `
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 5%;">#</th>
+                  <th style="width: 35%;">Stock Name</th>
+                  <th style="width: 12%;">Size</th>
+                  <th style="width: 18%;">Date Added</th>
+                  <th style="width: 15%;">Available (SQFT)</th>
+                  <th style="width: 15%;">Sold (SQFT)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${currentItems.map((item, index) => `
                   <tr>
-                    <th style="width: 5%;">#</th>
-                    <th style="width: 30%;">Stock Name</th>
-                    <th style="width: 12%;">Size</th>
-                    <th style="width: 15%;">Date Added</th>
-                    <th style="width: 15%;">Available (SQFT)</th>
-                    <th style="width: 13%;">Sold (SQFT)</th>
-                    <th style="width: 10%;">Total (SQFT)</th>
+                    <td>${index + 1}</td>
+                    <td><strong>${item.name}</strong></td>
+                    <td><span class="size-badge">${item.size}"</span></td>
+                    <td>${new Date(item.dateAdded).toLocaleDateString()}</td>
+                    <td class="stock-available">${item.stockAvailable}</td>
+                    <td class="stock-sold">${item.stockSold}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  ${currentItems.map((item, index) => `
-                    <tr>
-                      <td>${index + 1}</td>
-                      <td><strong>${item.name}</strong></td>
-                      <td><span class="size-badge">${item.size}"</span></td>
-                      <td>${new Date(item.dateAdded).toLocaleDateString()}</td>
-                      <td class="stock-available">${item.stockAvailable}</td>
-                      <td class="stock-sold">${item.stockSold}</td>
-                      <td><strong>${item.stockAvailable + item.stockSold}</strong></td>
-                    </tr>
-                  `).join('')}
-                  <tr style="background-color: #f1f5f9; border-top: 2px solid #1e293b; font-weight: bold;">
-                    <td colspan="4" style="text-align: right; padding-right: 10px;">TOTALS:</td>
-                    <td class="stock-available">${currentItems.reduce((sum, item) => sum + item.stockAvailable, 0)}</td>
-                    <td class="stock-sold">${currentItems.reduce((sum, item) => sum + item.stockSold, 0)}</td>
-                    <td><strong>${currentItems.reduce((sum, item) => sum + item.stockAvailable + item.stockSold, 0)}</strong></td>
-                  </tr>
-                </tbody>
-              </table>
-            `}
+                `).join('')}
+                <tr style="background-color: #f1f5f9; border-top: 2px solid #1e293b; font-weight: bold;">
+                  <td colspan="4" style="text-align: right; padding-right: 10px;">TOTALS:</td>
+                  <td class="stock-available">${currentItems.reduce((sum, item) => sum + item.stockAvailable, 0)}</td>
+                  <td class="stock-sold">${currentItems.reduce((sum, item) => sum + item.stockSold, 0)}</td>
+                </tr>
+              </tbody>
+            </table>
+          `}
 
-            <div class="footer">
-              <div>Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential Document</div>
-            </div>
-          </body>
-        </html>
-      `
+          <div class="footer">
+            <div>Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential Document</div>
+          </div>
+        </body>
+      </html>
+    `
 
-      const filename = `Paxal_Warehouse${currentWarehouse}_Stock_Report_${new Date().toISOString().split('T')[0]}`
-      downloadHTMLAsPDF(htmlContent, filename)
-      
+    const filename = `Paxal_Warehouse${currentWarehouse}_Stock_Report_${new Date().toISOString().split('T')[0]}`
+    downloadHTMLAsPDF(htmlContent, filename)
+    
+    // alert('✅ Report downloaded! Open the HTML file in your browser and use "Print > Save as PDF" to convert to PDF format.')
+    
+  } catch (error) {
+    console.error("Error generating PDF:", error)
+    alert("Failed to generate PDF. Please try again.")
+  } finally {
+    setIsExportingPDF(false)
+  }
+}
+  
       // alert('✅ Report downloaded! Open the HTML file in your browser and use "Print > Save as PDF" to convert to PDF format.')
       
-    } catch (error) {
-      console.error("Error generating PDF:", error)
-      alert("Failed to generate PDF. Please try again.")
-    } finally {
-      setIsExportingPDF(false)
-    }
-  }
+   
 
   const currentItems = getCurrentStockItems()
   const filteredItems = currentItems.filter((item) =>

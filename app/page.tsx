@@ -171,6 +171,20 @@ export default function PaxalMultiWarehouseSystem() {
     }
   }
 
+  // Mobile-compatible PDF download function
+  const downloadHTMLAsPDF = (htmlContent: string, filename: string) => {
+    const blob = new Blob([htmlContent], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${filename}.html`
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   const exportAvailableStockToPDF = async () => {
   setIsExportingAvailableStock(true)
   
@@ -333,9 +347,20 @@ export default function PaxalMultiWarehouseSystem() {
               font-weight: bold;
               display: inline-block;
             }
+            .print-instruction {
+              background-color: #fef3c7;
+              border: 1px solid #f59e0b;
+              padding: 15px;
+              border-radius: 8px;
+              margin: 20px 0;
+              text-align: center;
+              color: #92400e;
+            }
           </style>
         </head>
         <body>
+          
+          
           <div class="header">
             <div class="company-name">PAXAL MARBLES & GRANITES</div>
             <div class="report-title">📦 Available Stock Inventory Report</div>
@@ -376,7 +401,7 @@ export default function PaxalMultiWarehouseSystem() {
                     <td class="warehouse-cell">${item.warehouseNumber}</td>
                     <td>
                       <strong>${item.name}</strong>
-                      <span class="available-badge">✓ In Stock</span>
+                      <span class="available-badge"></span>
                     </td>
                     <td class="stock-available">${item.stockAvailable}</td>
                   </tr>
@@ -397,32 +422,11 @@ export default function PaxalMultiWarehouseSystem() {
       </html>
     `
 
-    // Convert HTML to PDF using browser's print functionality
-    const printWindow = window.open('', '_blank')
-    if (printWindow) {
-      printWindow.document.write(htmlContent)
-      printWindow.document.close()
-      
-      // Wait for content to load
-      printWindow.onload = () => {
-        // Trigger print dialog which allows saving as PDF
-        printWindow.print()
-        printWindow.close()
-      }
-    } else {
-      // Fallback: create downloadable HTML file
-      const blob = new Blob([htmlContent], { type: 'text/html' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `Paxal_Available_Stock_Report_${new Date().toISOString().split('T')[0]}.html`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      
-      alert('PDF export opened in a new window. If blocked by popup blocker, an HTML file has been downloaded instead. You can open the HTML file and use your browser\'s "Print to PDF" feature.')
-    }
+    const filename = `Paxal_Available_Stock_Report_${new Date().toISOString().split('T')[0]}`
+    downloadHTMLAsPDF(htmlContent, filename)
+    
+    // alert('✅ Report downloaded! Open the HTML file in your browser and use "Print > Save as PDF" to convert to PDF format.')
+    
   } catch (error) {
     console.error("Error generating available stock PDF:", error)
     alert("Failed to generate available stock PDF. Please try again.")
@@ -601,9 +605,20 @@ export default function PaxalMultiWarehouseSystem() {
                 font-style: italic;
                 background-color: #f8fafc;
               }
+              .print-instruction {
+                background-color: #fef3c7;
+                border: 1px solid #f59e0b;
+                padding: 15px;
+                border-radius: 8px;
+                margin: 20px 0;
+                text-align: center;
+                color: #92400e;
+              }
             </style>
           </head>
           <body>
+            
+            
             <div class="header">
               <div class="company-name">PAXAL MARBLES & GRANITES</div>
               <div class="report-title">Complete System Stock Overview - All Warehouses</div>
@@ -686,32 +701,11 @@ export default function PaxalMultiWarehouseSystem() {
         </html>
       `
 
-      // Convert HTML to PDF using browser's print functionality
-      const printWindow = window.open('', '_blank')
-      if (printWindow) {
-        printWindow.document.write(htmlContent)
-        printWindow.document.close()
-        
-        // Wait for content to load
-        printWindow.onload = () => {
-          // Trigger print dialog which allows saving as PDF
-          printWindow.print()
-          printWindow.close()
-        }
-      } else {
-        // Fallback: create downloadable HTML file
-        const blob = new Blob([htmlContent], { type: 'text/html' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `Paxal_Complete_System_Stock_Report_${new Date().toISOString().split('T')[0]}.html`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-        
-        alert('PDF export opened in a new window. If blocked by popup blocker, an HTML file has been downloaded instead. You can open the HTML file and use your browser\'s "Print to PDF" feature.')
-      }
+      const filename = `Paxal_Complete_System_Stock_Report_${new Date().toISOString().split('T')[0]}`
+      downloadHTMLAsPDF(htmlContent, filename)
+      
+      // alert('✅ Report downloaded! Open the HTML file in your browser and use "Print > Save as PDF" to convert to PDF format.')
+      
     } catch (error) {
       console.error("Error generating system PDF:", error)
       alert("Failed to generate system PDF. Please try again.")
@@ -843,9 +837,20 @@ export default function PaxalMultiWarehouseSystem() {
                 color: #64748b;
                 font-style: italic;
               }
+              .print-instruction {
+                background-color: #fef3c7;
+                border: 1px solid #f59e0b;
+                padding: 15px;
+                border-radius: 8px;
+                margin: 20px 0;
+                text-align: center;
+                color: #92400e;
+              }
             </style>
           </head>
           <body>
+            
+            
             <div class="header">
               <div class="company-name">PAXAL MARBLES & GRANITES</div>
               <div class="report-title">Warehouse ${currentWarehouse} - Stock Management Report</div>
@@ -915,32 +920,11 @@ export default function PaxalMultiWarehouseSystem() {
         </html>
       `
 
-      // Convert HTML to PDF using browser's print functionality
-      const printWindow = window.open('', '_blank')
-      if (printWindow) {
-        printWindow.document.write(htmlContent)
-        printWindow.document.close()
-        
-        // Wait for content to load
-        printWindow.onload = () => {
-          // Trigger print dialog which allows saving as PDF
-          printWindow.print()
-          printWindow.close()
-        }
-      } else {
-        // Fallback: create downloadable HTML file
-        const blob = new Blob([htmlContent], { type: 'text/html' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `Paxal_Warehouse${currentWarehouse}_Stock_Report_${new Date().toISOString().split('T')[0]}.html`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-        
-        alert('PDF export opened in a new window. If blocked by popup blocker, an HTML file has been downloaded instead. You can open the HTML file and use your browser\'s "Print to PDF" feature.')
-      }
+      const filename = `Paxal_Warehouse${currentWarehouse}_Stock_Report_${new Date().toISOString().split('T')[0]}`
+      downloadHTMLAsPDF(htmlContent, filename)
+      
+      // alert('✅ Report downloaded! Open the HTML file in your browser and use "Print > Save as PDF" to convert to PDF format.')
+      
     } catch (error) {
       console.error("Error generating PDF:", error)
       alert("Failed to generate PDF. Please try again.")
@@ -1447,6 +1431,7 @@ export default function PaxalMultiWarehouseSystem() {
                 disabled={!newStock.name || !newStock.stockAvailable || !newStock.size}
                 className="bg-slate-800 hover:bg-slate-700 text-sm sm:text-base"
               >
+                Add Stock Item to Warehouse {currentWarehouse}
               </Button>
             </DialogFooter>
           </DialogContent>

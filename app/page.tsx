@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Search, Plus, Trash2, Upload, Edit, Download, Building2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from "react";
+import { Search, Plus, Trash2, Upload, Edit, Download, Building2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -12,459 +12,340 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { addStockToFirestore, deleteStockFromFirestore, updateStockInFirestore } from "@/lib/firestore"
-import { getDocs, collection } from "firebase/firestore"
-import { db } from "@/lib/firebase"
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { addStockToFirestore, deleteStockFromFirestore, updateStockInFirestore } from "@/lib/firestore";
+import { getDocs, collection } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface StockItem {
-  id: string
-  name: string
-  image: string
-  dateAdded: string
-  stockAvailable: number
-  stockSold: number
-  size: string
-  warehouse: number
+  id: string;
+  name: string;
+  image: string;
+  dateAdded: string;
+  stockAvailable: number;
+  stockSold: number;
+  size: string;
+  warehouse: number;
+  unit: "SQFT" | "Pieces"; // Explicitly defined as union type
+}
+
+interface StockForm {
+  name: string;
+  image: string;
+  stockAvailable: string;
+  size: string;
+  unit: "SQFT" | "Pieces"; // Explicitly defined as union type
 }
 
 interface WarehouseData {
-  [key: string]: StockItem[]
+  [key: string]: StockItem[];
 }
 
-const STORAGE_KEY = "paxal-multi-warehouse-data"
+const STORAGE_KEY = "paxal-multi-warehouse-data";
 
 export default function PaxalMultiWarehouseSystem() {
-  const [currentWarehouse, setCurrentWarehouse] = useState<number>(1)
-  const [isLoading, setIsLoading] = useState(true)
+  const [currentWarehouse, setCurrentWarehouse] = useState<number>(1);
+  const [isLoading, setIsLoading] = useState(true);
   const [warehouseData, setWarehouseData] = useState<WarehouseData>({
     '1': [],
     '2': [],
     '3': [],
     '4': []
-  })
-  const [searchQuery, setSearchQuery] = useState("")
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isExportingPDF, setIsExportingPDF] = useState(false)
-  const [isExportingSystemPDF, setIsExportingSystemPDF] = useState(false)
-  const [isExportingAvailableStock, setIsExportingAvailableStock] = useState(false)
+  });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [isExportingSystemPDF, setIsExportingSystemPDF] = useState(false);
+  const [isExportingAvailableStock, setIsExportingAvailableStock] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
-    isOpen: boolean
-    itemId: string
-    itemName: string
+    isOpen: boolean;
+    itemId: string;
+    itemName: string;
   }>({
     isOpen: false,
     itemId: "",
     itemName: "",
-  })
-  const [detailViewItem, setDetailViewItem] = useState<StockItem | null>(null)
-  const [sellQuantity, setSellQuantity] = useState("")
-  const [addQuantity, setAddQuantity] = useState("")
-  const [newStock, setNewStock] = useState({
+  });
+  const [detailViewItem, setDetailViewItem] = useState<StockItem | null>(null);
+  const [sellQuantity, setSellQuantity] = useState("");
+  const [addQuantity, setAddQuantity] = useState("");
+  const [newStock, setNewStock] = useState<StockForm>({
     name: "",
     image: "",
     stockAvailable: "",
     size: "",
-  })
-  const [editStock, setEditStock] = useState({
+    unit: "SQFT"
+  });
+  const [editStock, setEditStock] = useState<StockForm & { id: string }>({
     id: "",
     name: "",
     image: "",
     stockAvailable: "",
     size: "",
-  })
+    unit: "SQFT"
+  });
 
-  const getDefaultImage = () => "/placeholder.svg?height=300&width=400&text=No+Image"
+  const getDefaultImage = () => "/placeholder.svg?height=300&width=400&text=No+Image";
 
   const saveToStorage = (data: WarehouseData) => {
     const storageData = {
       warehouses: data,
       lastUpdated: new Date().toISOString(),
-    }
-    // Using memory storage only as per Claude.ai requirements
-    console.log('Data would be saved to storage:', storageData)
-  }
+    };
+    console.log('Data would be saved to storage:', storageData);
+  };
 
   const loadFromStorage = (): WarehouseData => {
-    // Using memory storage only as per Claude.ai requirements
-    return { '1': [], '2': [], '3': [], '4': [] }
-  }
+    return { '1': [], '2': [], '3': [], '4': [] };
+  };
 
-  // Load data from Firestore for all warehouses
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        const warehouseCollections = ['1', '2', '3', '4']
-        const allWarehouseData: WarehouseData = { '1': [], '2': [], '3': [], '4': [] }
+        const warehouseCollections = ['1', '2', '3', '4'];
+        const allWarehouseData: WarehouseData = { '1': [], '2': [], '3': [], '4': [] };
 
-        // Load data for each warehouse
         for (const warehouseNum of warehouseCollections) {
           try {
-            const snapshot = await getDocs(collection(db, `warehouse${warehouseNum}-stocks`))
+            const snapshot = await getDocs(collection(db, `warehouse${warehouseNum}-stocks`));
             const items = snapshot.docs.map((doc) => ({
               ...doc.data() as Omit<StockItem, 'warehouse'>,
-              warehouse: parseInt(warehouseNum)
-            }))
-            allWarehouseData[warehouseNum] = items
+              warehouse: parseInt(warehouseNum),
+              unit: (doc.data() as any).unit || "SQFT" // Default to "SQFT" if undefined
+            }));
+            allWarehouseData[warehouseNum] = items;
           } catch (error) {
-            console.error(`Failed to fetch stock from Warehouse ${warehouseNum}:`, error)
-            allWarehouseData[warehouseNum] = []
+            console.error(`Failed to fetch stock from Warehouse ${warehouseNum}:`, error);
+            allWarehouseData[warehouseNum] = [];
           }
         }
 
-        setWarehouseData(allWarehouseData)
-        setIsLoading(false)
+        setWarehouseData(allWarehouseData);
+        setIsLoading(false);
       } catch (error) {
-        console.error("Failed to initialize warehouses:", error)
-        // Fallback to local storage if Firestore fails
-        const localData = loadFromStorage()
-        setWarehouseData(localData)
-        setIsLoading(false)
+        console.error("Failed to initialize warehouses:", error);
+        const localData = loadFromStorage();
+        setWarehouseData(localData);
+        setIsLoading(false);
       }
-    }
+    };
 
-    initializeApp()
-  }, [])
+    initializeApp();
+  }, []);
 
   useEffect(() => {
     if (!isLoading) {
-      console.log("Saving updated warehouse data:", warehouseData)
-      saveToStorage(warehouseData)
+      console.log("Saving updated warehouse data:", warehouseData);
+      saveToStorage(warehouseData);
     }
-  }, [warehouseData, isLoading])
+  }, [warehouseData, isLoading]);
 
   const getCurrentStockItems = (): StockItem[] => {
-    return warehouseData[currentWarehouse.toString()] || []
-  }
+    return warehouseData[currentWarehouse.toString()] || [];
+  };
 
   const updateCurrentWarehouseData = (newItems: StockItem[]) => {
     setWarehouseData(prev => ({
       ...prev,
       [currentWarehouse.toString()]: newItems
-    }))
-  }
+    }));
+  };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+    const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onload = (e) => {
-        const result = e.target?.result as string
-        setNewStock({ ...newStock, image: result })
-      }
-      reader.readAsDataURL(file)
+        const result = e.target?.result as string;
+        setNewStock({ ...newStock, image: result });
+      };
+      reader.readAsDataURL(file);
     }
-  }
+  };
 
   const handleEditFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+    const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onload = (e) => {
-        const result = e.target?.result as string
-        setEditStock({ ...editStock, image: result })
-      }
-      reader.readAsDataURL(file)
+        const result = e.target?.result as string;
+        setEditStock({ ...editStock, image: result });
+      };
+      reader.readAsDataURL(file);
     }
-  }
+  };
 
-  // Mobile-compatible PDF download function
   const downloadHTMLAsPDF = (htmlContent: string, filename: string) => {
-    const blob = new Blob([htmlContent], { type: 'text/html' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${filename}.html`
-    a.style.display = 'none'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.html`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const exportAvailableStockToPDF = async () => {
-  setIsExportingAvailableStock(true)
-  
-  try {
-    // Collect only items with available stock from all warehouses
-    const allAvailableItems: Array<StockItem & { warehouseNumber: number }> = []
-    
-    Object.keys(warehouseData).forEach(warehouseKey => {
-      const items = warehouseData[warehouseKey] || []
-      items.forEach(item => {
-        if (item.stockAvailable > 0) { // Only include items with available stock
-          allAvailableItems.push({
-            ...item,
-            warehouseNumber: parseInt(warehouseKey)
-          })
-        }
-      })
-    })
-
-    // Sort by stock name alphabetically
-    allAvailableItems.sort((a, b) => a.name.localeCompare(b.name))
-
-    // Calculate totals
-    const totalAvailableItems = allAvailableItems.length
-    const totalAvailableStock = allAvailableItems.reduce((sum, item) => sum + item.stockAvailable, 0)
-
-    // Create HTML content for available stock PDF
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Paxal Available Stock Report</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              margin: 20px;
-              color: #333;
-            }
-            .header {
-              text-align: center;
-              margin-bottom: 30px;
-              border-bottom: 2px solid #059669;
-              padding-bottom: 20px;
-            }
-            .company-name {
-              font-size: 24px;
-              font-weight: bold;
-              color: #1e293b;
-              margin-bottom: 5px;
-            }
-            .report-title {
-              font-size: 18px;
-              color: #059669;
-              margin-bottom: 10px;
-              font-weight: bold;
-            }
-            .report-date {
-              font-size: 14px;
-              color: #64748b;
-            }
-            .summary {
-              background-color: #ecfdf5;
-              padding: 15px;
-              border-radius: 8px;
-              margin-bottom: 25px;
-              border: 1px solid #bbf7d0;
-            }
-            .summary h3 {
-              margin: 0 0 10px 0;
-              color: #059669;
-              font-size: 16px;
-            }
-            .summary-grid {
-              display: grid;
-              grid-template-columns: repeat(2, 1fr);
-              gap: 20px;
-            }
-            .summary-item {
-              text-align: center;
-            }
-            .summary-value {
-              font-size: 24px;
-              font-weight: bold;
-              color: #059669;
-            }
-            .summary-label {
-              font-size: 14px;
-              color: #064e3b;
-              margin-top: 5px;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-              margin-bottom: 20px;
-            }
-            th {
-              background-color: #10b981;
-              color: white;
-              padding: 12px 15px;
-              text-align: left;
-              font-weight: bold;
-              font-size: 14px;
-            }
-            td {
-              padding: 12px 15px;
-              border-bottom: 1px solid #e2e8f0;
-              font-size: 14px;
-            }
-            tr:nth-child(even) {
-              background-color: #f0fdf4;
-            }
-            tr:hover {
-              background-color: #dcfce7;
-            }
-            .stock-available {
-              color: #059669;
-              font-weight: 600;
-              text-align: right;
-            }
-            .warehouse-cell {
-              text-align: center;
-              font-weight: bold;
-              color: #1e293b;
-              background-color: #f1f5f9;
-            }
-            .grand-total {
-              background-color: #059669 !important;
-              color: white !important;
-              font-weight: bold;
-              font-size: 16px;
-            }
-            .grand-total td {
-              color: white !important;
-              font-weight: bold;
-              padding: 15px;
-            }
-            .footer {
-              margin-top: 30px;
-              text-align: center;
-              font-size: 12px;
-              color: #64748b;
-              border-top: 1px solid #e2e8f0;
-              padding-top: 15px;
-            }
-            .no-data {
-              text-align: center;
-              padding: 20px;
-              color: #64748b;
-              font-style: italic;
-              background-color: #f8fafc;
-            }
-            .available-badge {
-              background-color: #dcfce7;
-              color: #166534;
-              padding: 4px 8px;
-              border-radius: 12px;
-              font-size: 12px;
-              font-weight: bold;
-              display: inline-block;
-            }
-            .print-instruction {
-              background-color: #fef3c7;
-              border: 1px solid #f59e0b;
-              padding: 15px;
-              border-radius: 8px;
-              margin: 20px 0;
-              text-align: center;
-              color: #92400e;
-            }
-          </style>
-        </head>
-        <body>
-          
-          
-          <div class="header">
-            <div class="company-name">PAXAL MARBLES & GRANITES</div>
-            <div class="report-title">📦 Available Stock Inventory Report</div>
-          </div>
-
-          <div class="summary">
-            <h3>Available Stock Summary</h3>
-            <div class="summary-grid">
-              <div class="summary-item">
-                <div class="summary-value">${totalAvailableItems}</div>
-                <div class="summary-label">Items with Available Stock</div>
-              </div>
-              <div class="summary-item">
-                <div class="summary-value">${totalAvailableStock}</div>
-                <div class="summary-label">Total Available Stock (SQFT)</div>
-              </div>
-            </div>
-          </div>
-
-          ${totalAvailableItems === 0 ? `
-            <div class="no-data">
-              No available stock found in any warehouse
-            </div>
-          ` : `
-            <table>
-              <thead>
-                <tr>
-                  <th style="width: 8%;">#</th>
-                  <th style="width: 10%;">Warehouse</th>
-                  <th style="width: 60%;">Stock Name</th>
-                  <th style="width: 22%;">Available Stock (SQFT)</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${allAvailableItems.map((item, index) => `
-                  <tr>
-                    <td>${index + 1}</td>
-                    <td class="warehouse-cell">${item.warehouseNumber}</td>
-                    <td>
-                      <strong>${item.name}</strong>
-                      <span class="available-badge"></span>
-                    </td>
-                    <td class="stock-available">${item.stockAvailable}</td>
-                  </tr>
-                `).join('')}
-                <tr class="grand-total">
-                  <td colspan="3" style="text-align: right;">TOTAL AVAILABLE STOCK - ALL WAREHOUSES:</td>
-                  <td style="text-align: right;">${totalAvailableStock} SQFT</td>
-                </tr>
-              </tbody>
-            </table>
-          `}
-
-          <div class="footer">
-            <div>Paxal Marbles & Granites - Available Stock Report - Confidential Document</div>
-            <div>Report shows only items with available stock > 0 SQFT</div>
-          </div>
-        </body>
-      </html>
-    `
-
-    const filename = `Paxal_Available_Stock_Report_${new Date().toISOString().split('T')[0]}`
-    downloadHTMLAsPDF(htmlContent, filename)
-    
-    // alert('✅ Report downloaded! Open the HTML file in your browser and use "Print > Save as PDF" to convert to PDF format.')
-    
-  } catch (error) {
-    console.error("Error generating available stock PDF:", error)
-    alert("Failed to generate available stock PDF. Please try again.")
-  } finally {
-    setIsExportingAvailableStock(false)
-  }
-}
-
-  const exportSystemStockToPDF = async () => {
-    setIsExportingSystemPDF(true)
+    setIsExportingAvailableStock(true);
     
     try {
-      // Collect all stock items from all warehouses
-      const allStockItems: Array<StockItem & { warehouseNumber: number }> = []
+      const allAvailableItems: Array<StockItem & { warehouseNumber: number }> = [];
       
       Object.keys(warehouseData).forEach(warehouseKey => {
-        const items = warehouseData[warehouseKey] || []
+        const items = warehouseData[warehouseKey] || [];
+        items.forEach(item => {
+          if (item.stockAvailable > 0) {
+            allAvailableItems.push({
+              ...item,
+              warehouseNumber: parseInt(warehouseKey)
+            });
+          }
+        });
+      });
+
+      allAvailableItems.sort((a, b) => a.name.localeCompare(b.name));
+
+      const totalAvailableItems = allAvailableItems.length;
+      const totalAvailableStock = allAvailableItems.reduce((sum, item) => sum + item.stockAvailable, 0);
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Paxal Available Stock Report</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+              .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #059669; padding-bottom: 20px; }
+              .company-name { font-size: 24px; font-weight: bold; color: #1e293b; margin-bottom: 5px; }
+              .report-title { font-size: 18px; color: #059669; margin-bottom: 10px; font-weight: bold; }
+              .report-date { font-size: 14px; color: #64748b; }
+              .summary { background-color: #ecfdf5; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #bbf7d0; }
+              .summary h3 { margin: 0 0 10px 0; color: #059669; font-size: 16px; }
+              .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+              .summary-item { text-align: center; }
+              .summary-value { font-size: 24px; font-weight: bold; color: #059669; }
+              .summary-label { font-size: 14px; color: #064e3b; margin-top: 5px; }
+              table { width: 100%; border-collapse: collapse; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+              th { background-color: #10b981; color: white; padding: 12px 15px; text-align: left; font-weight: bold; font-size: 14px; }
+              td { padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+              tr:nth-child(even) { background-color: #f0fdf4; }
+              tr:hover { background-color: #dcfce7; }
+              .stock-available { color: #059669; font-weight: 600; text-align: right; }
+              .warehouse-cell { text-align: center; font-weight: bold; color: #1e293b; background-color: #f1f5f9; }
+              .grand-total { background-color: #059669 !important; color: white !important; font-weight: bold; font-size: 16px; }
+              .grand-total td { color: white !important; font-weight: bold; padding: 15px; }
+              .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 15px; }
+              .no-data { text-align: center; padding: 20px; color: #64748b; font-style: italic; background-color: #f8fafc; }
+              .available-badge { background-color: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; display: inline-block; }
+              .print-instruction { background-color: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; color: #92400e; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div class="company-name">PAXAL MARBLES & GRANITES</div>
+              <div class="report-title">📦 Available Stock Inventory Report</div>
+            </div>
+
+            <div class="summary">
+              <h3>Available Stock Summary</h3>
+              <div class="summary-grid">
+                <div class="summary-item">
+                  <div class="summary-value">${totalAvailableItems}</div>
+                  <div class="summary-label">Items with Available Stock</div>
+                </div>
+                <div class="summary-item">
+                  <div class="summary-value">${totalAvailableStock}</div>
+                  <div class="summary-label">Total Available Stock (${allAvailableItems.length > 0 ? allAvailableItems[0].unit : "SQFT"})</div>
+                </div>
+              </div>
+            </div>
+
+            ${totalAvailableItems === 0 ? `
+              <div class="no-data">
+                No available stock found in any warehouse
+              </div>
+            ` : `
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 8%;">#</th>
+                    <th style="width: 10%;">Warehouse</th>
+                    <th style="width: 60%;">Stock Name</th>
+                    <th style="width: 22%;">Available Stock (${allAvailableItems[0].unit})</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${allAvailableItems.map((item, index) => `
+                    <tr>
+                      <td>${index + 1}</td>
+                      <td class="warehouse-cell">${item.warehouseNumber === 1 ? "W(1) - PMG(Rajankunte)" : item.warehouseNumber === 2 ? "W(2) - PMG(Jakkur)" : item.warehouseNumber === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}</td>
+                      <td>
+                        <strong>${item.name}</strong>
+                        <span class="available-badge"></span>
+                      </td>
+                      <td class="stock-available">${item.stockAvailable}</td>
+                    </tr>
+                  `).join('')}
+                  <tr class="grand-total">
+                    <td colspan="3" style="text-align: right;">TOTAL AVAILABLE STOCK - ALL WAREHOUSES:</td>
+                    <td style="text-align: right;">${totalAvailableStock} ${allAvailableItems[0].unit}</td>
+                  </tr>
+                </tbody>
+              </table>
+            `}
+
+            <div class="footer">
+              <div>Paxal Marbles & Granites - Available Stock Report - Confidential Document</div>
+              <div>Report shows only items with available stock > 0 ${allAvailableItems[0].unit}</div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      const filename = `Paxal_Available_Stock_Report_${new Date().toISOString().split('T')[0]}`;
+      downloadHTMLAsPDF(htmlContent, filename);
+      
+    } catch (error) {
+      console.error("Error generating available stock PDF:", error);
+      alert("Failed to generate available stock PDF. Please try again.");
+    } finally {
+      setIsExportingAvailableStock(false);
+    }
+  };
+
+  const exportSystemStockToPDF = async () => {
+    setIsExportingSystemPDF(true);
+    
+    try {
+      const allStockItems: Array<StockItem & { warehouseNumber: number }> = [];
+      
+      Object.keys(warehouseData).forEach(warehouseKey => {
+        const items = warehouseData[warehouseKey] || [];
         items.forEach(item => {
           allStockItems.push({
             ...item,
             warehouseNumber: parseInt(warehouseKey)
-          })
-        })
-      })
+          });
+        });
+      });
 
-      // Sort by warehouse number, then by stock name
       allStockItems.sort((a, b) => {
         if (a.warehouseNumber !== b.warehouseNumber) {
-          return a.warehouseNumber - b.warehouseNumber
+          return a.warehouseNumber - b.warehouseNumber;
         }
-        return a.name.localeCompare(b.name)
-      })
+        return a.name.localeCompare(b.name);
+      });
 
-      // Calculate totals
-      const totalItems = allStockItems.length
-      const totalAvailableStock = allStockItems.reduce((sum, item) => sum + item.stockAvailable, 0)
+      const totalItems = allStockItems.length;
+      const totalAvailableStock = allStockItems.reduce((sum, item) => sum + item.stockAvailable, 0);
 
-      // Create HTML content for system-wide PDF
       const htmlContent = `
         <!DOCTYPE html>
         <html>
@@ -472,153 +353,35 @@ export default function PaxalMultiWarehouseSystem() {
             <meta charset="utf-8">
             <title>Paxal System-Wide Stock Report</title>
             <style>
-              body {
-                font-family: Arial, sans-serif;
-                margin: 20px;
-                color: #333;
-              }
-              .header {
-                text-align: center;
-                margin-bottom: 30px;
-                border-bottom: 2px solid #333;
-                padding-bottom: 20px;
-              }
-              .company-name {
-                font-size: 24px;
-                font-weight: bold;
-                color: #1e293b;
-                margin-bottom: 5px;
-              }
-              .report-title {
-                font-size: 18px;
-                color: #64748b;
-                margin-bottom: 10px;
-              }
-              .report-date {
-                font-size: 14px;
-                color: #64748b;
-              }
-              .summary {
-                background-color: #f8fafc;
-                padding: 15px;
-                border-radius: 8px;
-                margin-bottom: 25px;
-                border: 1px solid #e2e8f0;
-              }
-              .summary h3 {
-                margin: 0 0 10px 0;
-                color: #1e293b;
-                font-size: 16px;
-              }
-              .summary-grid {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 20px;
-              }
-              .summary-item {
-                text-align: center;
-              }
-              .summary-value {
-                font-size: 24px;
-                font-weight: bold;
-                color: #1e293b;
-              }
-              .summary-label {
-                font-size: 14px;
-                color: #64748b;
-                margin-top: 5px;
-              }
-              .warehouse-section {
-                margin-bottom: 30px;
-              }
-              .warehouse-header {
-                background-color: #1e293b;
-                color: white;
-                padding: 12px 15px;
-                margin-bottom: 0;
-                font-size: 16px;
-                font-weight: bold;
-                border-radius: 5px 5px 0 0;
-              }
-              table {
-                width: 100%;
-                border-collapse: collapse;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                margin-bottom: 0;
-              }
-              th {
-                background-color: #475569;
-                color: white;
-                padding: 12px 15px;
-                text-align: left;
-                font-weight: bold;
-                font-size: 14px;
-              }
-              td {
-                padding: 12px 15px;
-                border-bottom: 1px solid #e2e8f0;
-                font-size: 14px;
-              }
-              tr:nth-child(even) {
-                background-color: #f8fafc;
-              }
-              tr:hover {
-                background-color: #f1f5f9;
-              }
-              .stock-available {
-                color: #059669;
-                font-weight: 600;
-                text-align: right;
-              }
-              .warehouse-total {
-                background-color: #e2e8f0 !important;
-                font-weight: bold;
-                border-top: 2px solid #1e293b;
-              }
-              .warehouse-total td {
-                font-weight: bold;
-                color: #1e293b;
-              }
-              .grand-total {
-                background-color: #1e293b !important;
-                color: white !important;
-                font-weight: bold;
-                font-size: 16px;
-              }
-              .grand-total td {
-                color: white !important;
-                font-weight: bold;
-                padding: 15px;
-              }
-              .footer {
-                margin-top: 30px;
-                text-align: center;
-                font-size: 12px;
-                color: #64748b;
-                border-top: 1px solid #e2e8f0;
-                padding-top: 15px;
-              }
-              .no-data {
-                text-align: center;
-                padding: 20px;
-                color: #64748b;
-                font-style: italic;
-                background-color: #f8fafc;
-              }
-              .print-instruction {
-                background-color: #fef3c7;
-                border: 1px solid #f59e0b;
-                padding: 15px;
-                border-radius: 8px;
-                margin: 20px 0;
-                text-align: center;
-                color: #92400e;
-              }
+              body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+              .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+              .company-name { font-size: 24px; font-weight: bold; color: #1e293b; margin-bottom: 5px; }
+              .report-title { font-size: 18px; color: #64748b; margin-bottom: 10px; }
+              .report-date { font-size: 14px; color: #64748b; }
+              .summary { background-color: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #e2e8f0; }
+              .summary h3 { margin: 0 0 10px 0; color: #1e293b; font-size: 16px; }
+              .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+              .summary-item { text-align: center; }
+              .summary-value { font-size: 24px; font-weight: bold; color: #1e293b; }
+              .summary-label { font-size: 14px; color: #64748b; margin-top: 5px; }
+              .warehouse-section { margin-bottom: 30px; }
+              .warehouse-header { background-color: #1e293b; color: white; padding: 12px 15px; margin-bottom: 0; font-size: 16px; font-weight: bold; border-radius: 5px 5px 0 0; }
+              table { width: 100%; border-collapse: collapse; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 0; }
+              th { background-color: #475569; color: white; padding: 12px 15px; text-align: left; font-weight: bold; font-size: 14px; }
+              td { padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+              tr:nth-child(even) { background-color: #f8fafc; }
+              tr:hover { background-color: #f1f5f9; }
+              .stock-available { color: #059669; font-weight: 600; text-align: right; }
+              .warehouse-total { background-color: #e2e8f0 !important; font-weight: bold; border-top: 2px solid #1e293b; }
+              .warehouse-total td { font-weight: bold; color: #1e293b; }
+              .grand-total { background-color: #1e293b !important; color: white !important; font-weight: bold; font-size: 16px; }
+              .grand-total td { color: white !important; font-weight: bold; padding: 15px; }
+              .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 15px; }
+              .no-data { text-align: center; padding: 20px; color: #64748b; font-style: italic; background-color: #f8fafc; }
+              .print-instruction { background-color: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; color: #92400e; }
             </style>
           </head>
           <body>
-            
-            
             <div class="header">
               <div class="company-name">PAXAL MARBLES & GRANITES</div>
               <div class="report-title">Complete System Stock Overview - All Warehouses</div>
@@ -633,7 +396,7 @@ export default function PaxalMultiWarehouseSystem() {
                 </div>
                 <div class="summary-item">
                   <div class="summary-value">${totalAvailableStock}</div>
-                  <div class="summary-label">Total Available Stock (SQFT)</div>
+                  <div class="summary-label">Total Available Stock (${allStockItems.length > 0 ? allStockItems[0].unit : "SQFT"})</div>
                 </div>
               </div>
             </div>
@@ -644,13 +407,13 @@ export default function PaxalMultiWarehouseSystem() {
               </div>
             ` : `
               ${[1, 2, 3, 4].map(warehouseNum => {
-                const warehouseItems = allStockItems.filter(item => item.warehouseNumber === warehouseNum)
-                const warehouseTotal = warehouseItems.reduce((sum, item) => sum + item.stockAvailable, 0)
+                const warehouseItems = allStockItems.filter(item => item.warehouseNumber === warehouseNum);
+                const warehouseTotal = warehouseItems.reduce((sum, item) => sum + item.stockAvailable, 0);
                 
                 return `
                   <div class="warehouse-section">
                     <div class="warehouse-header">
-                      Warehouse ${warehouseNum} (${warehouseItems.length} items - ${warehouseTotal} SQFT available)
+                      ${warehouseNum === 1 ? "W(1) - PMG(Rajankunte)" : warehouseNum === 2 ? "W(2) - PMG(Jakkur)" : warehouseNum === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"} (${warehouseItems.length} items - ${warehouseTotal} ${warehouseItems.length > 0 ? warehouseItems[0].unit : "SQFT"} available)
                     </div>
                     ${warehouseItems.length === 0 ? `
                       <div class="no-data">No stock items in this warehouse</div>
@@ -660,7 +423,7 @@ export default function PaxalMultiWarehouseSystem() {
                           <tr>
                             <th style="width: 10%;">#</th>
                             <th style="width: 70%;">Stock Name</th>
-                            <th style="width: 20%;">Available Stock (SQFT)</th>
+                            <th style="width: 20%;">Available Stock (${warehouseItems[0].unit})</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -673,7 +436,7 @@ export default function PaxalMultiWarehouseSystem() {
                           `).join('')}
                           ${warehouseItems.length > 0 ? `
                             <tr class="warehouse-total">
-                              <td colspan="2" style="text-align: right; font-weight: bold;">Warehouse ${warehouseNum} Total:</td>
+                              <td colspan="2" style="text-align: right; font-weight: bold;">${warehouseNum === 1 ? "W(1) - PMG(Rajankunte)" : warehouseNum === 2 ? "W(2) - PMG(Jakkur)" : warehouseNum === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"} Total:</td>
                               <td class="stock-available" style="font-weight: bold;">${warehouseTotal}</td>
                             </tr>
                           ` : ''}
@@ -688,7 +451,7 @@ export default function PaxalMultiWarehouseSystem() {
                 <tbody>
                   <tr class="grand-total">
                     <td style="text-align: right; width: 80%;">GRAND TOTAL - ALL WAREHOUSES:</td>
-                    <td style="text-align: right; width: 20%;">${totalAvailableStock} SQFT</td>
+                    <td style="text-align: right; width: 20%;">${totalAvailableStock} ${allStockItems[0].unit}</td>
                   </tr>
                 </tbody>
               </table>
@@ -699,253 +462,146 @@ export default function PaxalMultiWarehouseSystem() {
             </div>
           </body>
         </html>
-      `
+      `;
 
-      const filename = `Paxal_Complete_System_Stock_Report_${new Date().toISOString().split('T')[0]}`
-      downloadHTMLAsPDF(htmlContent, filename)
-      
-      // alert('✅ Report downloaded! Open the HTML file in your browser and use "Print > Save as PDF" to convert to PDF format.')
+      const filename = `Paxal_Complete_System_Stock_Report_${new Date().toISOString().split('T')[0]}`;
+      downloadHTMLAsPDF(htmlContent, filename);
       
     } catch (error) {
-      console.error("Error generating system PDF:", error)
-      alert("Failed to generate system PDF. Please try again.")
+      console.error("Error generating system PDF:", error);
+      alert("Failed to generate system PDF. Please try again.");
     } finally {
-      setIsExportingSystemPDF(false)
+      setIsExportingSystemPDF(false);
     }
-  }
-const exportToPDF = async () => {
-  setIsExportingPDF(true)
-  const currentItems = getCurrentStockItems()
-  
-  try {
-    // Create HTML content for PDF
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Paxal Warehouse ${currentWarehouse} Stock Report</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              margin: 20px;
-              color: #333;
-            }
-            .header {
-              text-align: center;
-              margin-bottom: 30px;
-              border-bottom: 2px solid #333;
-              padding-bottom: 20px;
-            }
-            .company-name {
-              font-size: 24px;
-              font-weight: bold;
-              color: #1e293b;
-              margin-bottom: 5px;
-            }
-            .report-title {
-              font-size: 18px;
-              color: #64748b;
-              margin-bottom: 10px;
-            }
-            .report-date {
-              font-size: 14px;
-              color: #64748b;
-            }
-            .summary {
-              background-color: #f8fafc;
-              padding: 15px;
-              border-radius: 8px;
-              margin-bottom: 25px;
-              border: 1px solid #e2e8f0;
-            }
-            .summary h3 {
-              margin: 0 0 10px 0;
-              color: #1e293b;
-              font-size: 16px;
-            }
-            .summary-grid {
-              display: grid;
-              grid-template-columns: repeat(3, 1fr);
-              gap: 15px;
-            }
-            .summary-item {
-              text-align: center;
-            }
-            .summary-value {
-              font-size: 20px;
-              font-weight: bold;
-              color: #1e293b;
-            }
-            .summary-label {
-              font-size: 12px;
-              color: #64748b;
-              margin-top: 2px;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-top: 20px;
-              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            }
-            th {
-              background-color: #1e293b;
-              color: white;
-              padding: 12px 8px;
-              text-align: left;
-              font-weight: bold;
-              font-size: 14px;
-            }
-            td {
-              padding: 10px 8px;
-              border-bottom: 1px solid #e2e8f0;
-              font-size: 13px;
-            }
-            tr:nth-child(even) {
-              background-color: #f8fafc;
-            }
-            tr:hover {
-              background-color: #f1f5f9;
-            }
-            .stock-available {
-              color: #059669;
-              font-weight: 600;
-            }
-            .stock-sold {
-              color: #2563eb;
-              font-weight: 600;
-            }
-            .size-badge {
-              background-color: #e2e8f0;
-              padding: 4px 8px;
-              border-radius: 4px;
-              font-size: 12px;
-              font-weight: 600;
-            }
-            .footer {
-              margin-top: 30px;
-              text-align: center;
-              font-size: 12px;
-              color: #64748b;
-              border-top: 1px solid #e2e8f0;
-              padding-top: 15px;
-            }
-            .no-data {
-              text-align: center;
-              padding: 40px;
-              color: #64748b;
-              font-style: italic;
-            }
-            .print-instruction {
-              background-color: #fef3c7;
-              border: 1px solid #f59e0b;
-              padding: 15px;
-              border-radius: 8px;
-              margin: 20px 0;
-              text-align: center;
-              color: #92400e;
-            }
-          </style>
-        </head>
-        <body>
-          
-          
-          <div class="header">
-            <div class="company-name">PAXAL MARBLES & GRANITES</div>
-            <div class="report-title">Warehouse ${currentWarehouse} - Stock Management Report</div>
-          </div>
+  };
 
-          <div class="summary">
-            <h3>Summary Statistics</h3>
-            <div class="summary-grid">
-              <div class="summary-item">
-                <div class="summary-value">${currentItems.length}</div>
-                <div class="summary-label">Total Items</div>
-              </div>
-              <div class="summary-item">
-                <div class="summary-value">${currentItems.reduce((sum, item) => sum + item.stockAvailable, 0)}</div>
-                <div class="summary-label">Stock Available (SQFT)</div>
-              </div>
-              <div class="summary-item">
-                <div class="summary-value">${currentItems.reduce((sum, item) => sum + item.stockSold, 0)}</div>
-                <div class="summary-label">Stock Sold (SQFT)</div>
+  const exportToPDF = async () => {
+    setIsExportingPDF(true);
+    const currentItems = getCurrentStockItems();
+    
+    try {
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Paxal ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"} Stock Report</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+              .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+              .company-name { font-size: 24px; font-weight: bold; color: #1e293b; margin-bottom: 5px; }
+              .report-title { font-size: 18px; color: #64748b; margin-bottom: 10px; }
+              .report-date { font-size: 14px; color: #64748b; }
+              .summary { background-color: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #e2e8f0; }
+              .summary h3 { margin: 0 0 10px 0; color: #1e293b; font-size: 16px; }
+              .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+              .summary-item { text-align: center; }
+              .summary-value { font-size: 20px; font-weight: bold; color: #1e293b; }
+              .summary-label { font-size: 12px; color: #64748b; margin-top: 2px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+              th { background-color: #1e293b; color: white; padding: 12px 8px; text-align: left; font-weight: bold; font-size: 14px; }
+              td { padding: 10px 8px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+              tr:nth-child(even) { background-color: #f8fafc; }
+              tr:hover { background-color: #f1f5f9; }
+              .stock-available { color: #059669; font-weight: 600; }
+              .stock-sold { color: #2563eb; font-weight: 600; }
+              .size-badge { background-color: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+              .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 15px; }
+              .no-data { text-align: center; padding: 40px; color: #64748b; font-style: italic; }
+              .print-instruction { background-color: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; color: #92400e; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div class="company-name">PAXAL MARBLES & GRANITES</div>
+              <div class="report-title">${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"} - Stock Management Report</div>
+            </div>
+
+            <div class="summary">
+              <h3>Summary Statistics</h3>
+              <div class="summary-grid">
+                <div class="summary-item">
+                  <div class="summary-value">${currentItems.length}</div>
+                  <div class="summary-label">Total Items</div>
+                </div>
+                <div class="summary-item">
+                  <div class="summary-value">${currentItems.reduce((sum, item) => sum + item.stockAvailable, 0)}</div>
+                  <div class="summary-label">Stock Available (${currentItems.length > 0 ? currentItems[0].unit : "SQFT"})</div>
+                </div>
+                <div class="summary-item">
+                  <div class="summary-value">${currentItems.reduce((sum, item) => sum + item.stockSold, 0)}</div>
+                  <div class="summary-label">Stock Sold (${currentItems.length > 0 ? currentItems[0].unit : "SQFT"})</div>
+                </div>
               </div>
             </div>
-          </div>
 
-          ${currentItems.length === 0 ? `
-            <div class="no-data">
-              No stock items found in Warehouse ${currentWarehouse}
-            </div>
-          ` : `
-            <table>
-              <thead>
-                <tr>
-                  <th style="width: 5%;">#</th>
-                  <th style="width: 35%;">Stock Name</th>
-                  <th style="width: 12%;">Size</th>
-                  <th style="width: 18%;">Date Added</th>
-                  <th style="width: 15%;">Available (SQFT)</th>
-                  <th style="width: 15%;">Sold (SQFT)</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${currentItems.map((item, index) => `
+            ${currentItems.length === 0 ? `
+              <div class="no-data">
+                No stock items found in ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}
+              </div>
+            ` : `
+              <table>
+                <thead>
                   <tr>
-                    <td>${index + 1}</td>
-                    <td><strong>${item.name}</strong></td>
-                    <td><span class="size-badge">${item.size}"</span></td>
-                    <td>${new Date(item.dateAdded).toLocaleDateString()}</td>
-                    <td class="stock-available">${item.stockAvailable}</td>
-                    <td class="stock-sold">${item.stockSold}</td>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 35%;">Stock Name</th>
+                    <th style="width: 12%;">Size</th>
+                    <th style="width: 18%;">Date Added</th>
+                    <th style="width: 15%;">Available (${currentItems[0].unit})</th>
+                    <th style="width: 15%;">Sold (${currentItems[0].unit})</th>
                   </tr>
-                `).join('')}
-                <tr style="background-color: #f1f5f9; border-top: 2px solid #1e293b; font-weight: bold;">
-                  <td colspan="4" style="text-align: right; padding-right: 10px;">TOTALS:</td>
-                  <td class="stock-available">${currentItems.reduce((sum, item) => sum + item.stockAvailable, 0)}</td>
-                  <td class="stock-sold">${currentItems.reduce((sum, item) => sum + item.stockSold, 0)}</td>
-                </tr>
-              </tbody>
-            </table>
-          `}
+                </thead>
+                <tbody>
+                  ${currentItems.map((item, index) => `
+                    <tr>
+                      <td>${index + 1}</td>
+                      <td><strong>${item.name}</strong></td>
+                      <td><span class="size-badge">${item.size}"</span></td>
+                      <td>${new Date(item.dateAdded).toLocaleDateString()}</td>
+                      <td class="stock-available">${item.stockAvailable}</td>
+                      <td class="stock-sold">${item.stockSold}</td>
+                    </tr>
+                  `).join('')}
+                  <tr style="background-color: #f1f5f9; border-top: 2px solid #1e293b; font-weight: bold;">
+                    <td colspan="4" style="text-align: right; padding-right: 10px;">TOTALS:</td>
+                    <td class="stock-available">${currentItems.reduce((sum, item) => sum + item.stockAvailable, 0)}</td>
+                    <td class="stock-sold">${currentItems.reduce((sum, item) => sum + item.stockSold, 0)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            `}
 
-          <div class="footer">
-            <div>Paxal Marbles & Granites - Warehouse ${currentWarehouse} - Confidential Document</div>
-          </div>
-        </body>
-      </html>
-    `
+            <div class="footer">
+              <div>Paxal Marbles & Granites - ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"} - Confidential Document</div>
+            </div>
+          </body>
+        </html>
+      `;
 
-    const filename = `Paxal_Warehouse${currentWarehouse}_Stock_Report_${new Date().toISOString().split('T')[0]}`
-    downloadHTMLAsPDF(htmlContent, filename)
-    
-    // alert('✅ Report downloaded! Open the HTML file in your browser and use "Print > Save as PDF" to convert to PDF format.')
-    
-  } catch (error) {
-    console.error("Error generating PDF:", error)
-    alert("Failed to generate PDF. Please try again.")
-  } finally {
-    setIsExportingPDF(false)
-  }
-}
-  
-      // alert('✅ Report downloaded! Open the HTML file in your browser and use "Print > Save as PDF" to convert to PDF format.')
+      const filename = `Paxal_${currentWarehouse === 1 ? "W(1)_PMG_Rajankunte" : currentWarehouse === 2 ? "W(2)_PMG_Jakkur" : currentWarehouse === 3 ? "W(3)_Paxal_Tiles_and_Bathware" : "W(4)_Paxal_Decor"}_Stock_Report_${new Date().toISOString().split('T')[0]}`;
+      downloadHTMLAsPDF(htmlContent, filename);
       
-   
-
-  const currentItems = getCurrentStockItems()
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Please try again.");
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+  
+  const currentItems = getCurrentStockItems();
   const filteredItems = currentItems.filter((item) =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  );
 
   const handleWarehouseChange = (warehouseNumber: number) => {
-    setCurrentWarehouse(warehouseNumber)
-    setSearchQuery("")
-    setDetailViewItem(null)
-    setIsAddModalOpen(false)
-    setIsEditModalOpen(false)
-    setDeleteConfirmation({ isOpen: false, itemId: "", itemName: "" })
-  }
+    setCurrentWarehouse(warehouseNumber);
+    setSearchQuery("");
+    setDetailViewItem(null);
+    setIsAddModalOpen(false);
+    setIsEditModalOpen(false);
+    setDeleteConfirmation({ isOpen: false, itemId: "", itemName: "" });
+  };
 
   const handleAddStock = async () => {
     if (newStock.name && newStock.stockAvailable && newStock.size) {
@@ -958,24 +614,21 @@ const exportToPDF = async () => {
         stockSold: 0,
         size: newStock.size,
         warehouse: currentWarehouse,
-      }
+        unit: newStock.unit
+      };
       
       try {
-        // Add to Firestore with warehouse-specific collection
-        await addStockToFirestore(newItem, `warehouse${currentWarehouse}-stocks`)
-        
-        // Update local state
-        const updatedItems = [newItem, ...currentItems]
-        updateCurrentWarehouseData(updatedItems)
-        
-        setNewStock({ name: "", image: "", stockAvailable: "", size: "" })
-        setIsAddModalOpen(false)
+        await addStockToFirestore(newItem, `warehouse${currentWarehouse}-stocks`);
+        const updatedItems = [newItem, ...currentItems];
+        updateCurrentWarehouseData(updatedItems);
+        setNewStock({ name: "", image: "", stockAvailable: "", size: "", unit: "SQFT" });
+        setIsAddModalOpen(false);
       } catch (error) {
-        console.error("Failed to add stock to Firestore:", error)
-        alert("Failed to add stock. Please try again.")
+        console.error("Failed to add stock to Firestore:", error);
+        alert("Failed to add stock. Please try again.");
       }
     }
-  }
+  };
 
   const handleOpenEditModal = (item: StockItem) => {
     setEditStock({
@@ -984,10 +637,11 @@ const exportToPDF = async () => {
       image: item.image,
       stockAvailable: item.stockAvailable.toString(),
       size: item.size,
-    })
-    setIsEditModalOpen(true)
-    setDetailViewItem(null)
-  }
+      unit: item.unit // This is now type-safe due to updated StockForm interface
+    });
+    setIsEditModalOpen(true);
+    setDetailViewItem(null);
+  };
 
   const handleUpdateStock = async () => {
     if (editStock.name && editStock.stockAvailable && editStock.size) {
@@ -1000,104 +654,91 @@ const exportToPDF = async () => {
         dateAdded: currentItems.find(item => item.id === editStock.id)?.dateAdded || new Date().toISOString().split("T")[0],
         stockSold: currentItems.find(item => item.id === editStock.id)?.stockSold || 0,
         warehouse: currentWarehouse,
-      }
+        unit: editStock.unit
+      };
 
       try {
-        // Update in Firestore with warehouse-specific collection
-        await updateStockInFirestore(updatedItem, `warehouse${currentWarehouse}-stocks`)
-        
-        // Update local state
+        await updateStockInFirestore(updatedItem, `warehouse${currentWarehouse}-stocks`);
         const updatedItems = currentItems.map((item) =>
           item.id === editStock.id ? updatedItem : item
-        )
-        updateCurrentWarehouseData(updatedItems)
-        
-        setEditStock({ id: "", name: "", image: "", stockAvailable: "", size: "" })
-        setIsEditModalOpen(false)
+        );
+        updateCurrentWarehouseData(updatedItems);
+        setEditStock({ id: "", name: "", image: "", stockAvailable: "", size: "", unit: "SQFT" });
+        setIsEditModalOpen(false);
       } catch (error) {
-        console.error("Failed to update stock in Firestore:", error)
-        alert("Failed to update stock. Please try again.")
+        console.error("Failed to update stock in Firestore:", error);
+        alert("Failed to update stock. Please try again.");
       }
     }
-  }
+  };
  
   const handleDeleteStock = async (id: string) => {
     try {
-      // Delete from Firestore with warehouse-specific collection
-      await deleteStockFromFirestore(id, `warehouse${currentWarehouse}-stocks`)
-      
-      // Update local state
-      const updatedItems = currentItems.filter((item) => item.id !== id)
-      updateCurrentWarehouseData(updatedItems)
-      
-      setDeleteConfirmation({ isOpen: false, itemId: "", itemName: "" })
+      await deleteStockFromFirestore(id, `warehouse${currentWarehouse}-stocks`);
+      const updatedItems = currentItems.filter((item) => item.id !== id);
+      updateCurrentWarehouseData(updatedItems);
+      setDeleteConfirmation({ isOpen: false, itemId: "", itemName: "" });
     } catch (error) {
-      console.error("Failed to delete stock from Firestore:", error)
-      alert("Failed to delete stock. Please try again.")
+      console.error("Failed to delete stock from Firestore:", error);
+      alert("Failed to delete stock. Please try again.");
     }
-  }
+  };
 
   const handleSellStock = async () => {
     if (detailViewItem && sellQuantity) {
-      const quantity = Number.parseInt(sellQuantity)
+      const quantity = Number.parseInt(sellQuantity);
       if (quantity > 0 && quantity <= detailViewItem.stockAvailable) {
-        const updatedAvailable = detailViewItem.stockAvailable - quantity
-        const updatedSold = detailViewItem.stockSold + quantity
+        const updatedAvailable = detailViewItem.stockAvailable - quantity;
+        const updatedSold = detailViewItem.stockSold + quantity;
 
         const updatedItem: StockItem = {
           ...detailViewItem,
           stockAvailable: updatedAvailable,
           stockSold: updatedSold,
-        }
+        };
 
         try {
-          // Update in Firestore with warehouse-specific collection
-          await updateStockInFirestore(updatedItem, `warehouse${currentWarehouse}-stocks`)
-          
-          // Update local state
+          await updateStockInFirestore(updatedItem, `warehouse${currentWarehouse}-stocks`);
           const updatedItems = currentItems.map((item) =>
             item.id === detailViewItem.id ? updatedItem : item,
-          )
-          updateCurrentWarehouseData(updatedItems)
-          setSellQuantity("")
-          setDetailViewItem(updatedItem)
+          );
+          updateCurrentWarehouseData(updatedItems);
+          setSellQuantity("");
+          setDetailViewItem(updatedItem);
         } catch (error) {
-          console.error("Failed to update stock in Firestore:", error)
-          alert("Failed to sell stock. Please try again.")
+          console.error("Failed to update stock in Firestore:", error);
+          alert("Failed to sell stock. Please try again.");
         }
       }
     }
-  }
+  };
 
   const handleAddStockToExisting = async () => {
     if (detailViewItem && addQuantity) {
-      const quantity = Number.parseInt(addQuantity)
+      const quantity = Number.parseInt(addQuantity);
       if (quantity > 0) {
-        const updatedAvailable = detailViewItem.stockAvailable + quantity
+        const updatedAvailable = detailViewItem.stockAvailable + quantity;
 
         const updatedItem: StockItem = {
           ...detailViewItem,
           stockAvailable: updatedAvailable,
-        }
+        };
 
         try {
-          // Update in Firestore with warehouse-specific collection
-          await updateStockInFirestore(updatedItem, `warehouse${currentWarehouse}-stocks`)
-          
-          // Update local state
+          await updateStockInFirestore(updatedItem, `warehouse${currentWarehouse}-stocks`);
           const updatedItems = currentItems.map((item) =>
             item.id === detailViewItem.id ? updatedItem : item,
-          )
-          updateCurrentWarehouseData(updatedItems)
-          setAddQuantity("")
-          setDetailViewItem(updatedItem)
+          );
+          updateCurrentWarehouseData(updatedItems);
+          setAddQuantity("");
+          setDetailViewItem(updatedItem);
         } catch (error) {
-          console.error("Failed to update stock in Firestore:", error)
-          alert("Failed to add stock. Please try again.")
+          console.error("Failed to update stock in Firestore:", error);
+          alert("Failed to add stock. Please try again.");
         }
       }
     }
-  }
+  };
 
   if (isLoading) {
     return (
@@ -1118,7 +759,7 @@ const exportToPDF = async () => {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -1133,7 +774,7 @@ const exportToPDF = async () => {
               </div>
               <div className="flex items-center justify-center sm:justify-end gap-2">
                 <Badge variant="secondary" className="text-xs sm:text-sm">
-                  {currentItems.length} Items in Warehouse {currentWarehouse}
+                  {currentItems.length} Items in {currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}
                 </Badge>
                 <Badge variant="outline" className="text-xs sm:text-sm bg-green-50 text-green-700">
                   Data Synced ✓
@@ -1141,7 +782,6 @@ const exportToPDF = async () => {
               </div>
             </div>
             
-            {/* Warehouse Selection Buttons */}
             <div className="flex flex-wrap gap-1 sm:gap-2 justify-center sm:justify-end">
               {[1, 2, 3, 4].map((warehouseNum) => (
                 <Button
@@ -1157,7 +797,7 @@ const exportToPDF = async () => {
                 >
                   <Building2 className="h-3 w-3 mr-1" />
                   <span className="hidden sm:inline">Warehouse</span>
-                  <span className="sm:hidden">WH</span> {warehouseNum}
+                  <span className="sm:hidden">WH</span> ${warehouseNum === 1 ? "W(1) - PMG(Rajankunte)" : warehouseNum === 2 ? "W(2) - PMG(Jakkur)" : warehouseNum === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}
                   <Badge 
                     variant="secondary" 
                     className="ml-1 sm:ml-2 text-xs bg-slate-100 text-slate-700 px-1"
@@ -1175,7 +815,7 @@ const exportToPDF = async () => {
         <div className="mb-4 p-4 bg-white rounded-lg border border-slate-200">
           <div className="flex items-center justify-center gap-2 text-slate-700">
             <Building2 className="h-5 w-5" />
-            <span className="text-lg font-semibold">Currently Managing: Warehouse {currentWarehouse}</span>
+            <span className="text-lg font-semibold">Currently Managing: ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}</span>
           </div>
         </div>
 
@@ -1184,15 +824,17 @@ const exportToPDF = async () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-3 w-3 sm:h-4 sm:w-4" />
             <Input
               type="text"
-              placeholder={`Search stock items in Warehouse ${currentWarehouse}...`}
+              placeholder={`Search stock items in ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 sm:pl-10 h-10 sm:h-12 text-sm sm:text-base lg:text-lg"
             />
           </div>
           <div className="flex flex-col gap-2">
-            {/* Main Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+
+
+              
               <Button
                 onClick={exportToPDF}
                 disabled={isExportingPDF}
@@ -1206,7 +848,7 @@ const exportToPDF = async () => {
                 ) : (
                   <>
                     <Download className="h-4 w-4 mr-2" />
-                    Export Warehouse {currentWarehouse} to PDF
+                    Export ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"} to PDF
                   </>
                 )}
               </Button>
@@ -1215,11 +857,9 @@ const exportToPDF = async () => {
                 className="h-10 sm:h-12 px-4 sm:px-6 bg-slate-800 hover:bg-slate-700 text-sm sm:text-base flex-1 sm:flex-none"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add New Stock to Warehouse {currentWarehouse}
+                Add New Stock to ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}
               </Button>
             </div>
-            
-            {/* System-Wide Export Buttons */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <Button
                 onClick={exportAvailableStockToPDF}
@@ -1265,12 +905,12 @@ const exportToPDF = async () => {
               <Search className="h-8 w-8 sm:h-12 sm:w-12 mx-auto" />
             </div>
             <h3 className="text-base sm:text-lg font-medium text-slate-900 mb-2">
-              {searchQuery ? "No items found" : `No stock items in Warehouse ${currentWarehouse} yet`}
+              {searchQuery ? "No items found" : `No stock items in ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"} yet`}
             </h3>
             <p className="text-sm sm:text-base text-slate-600 max-w-md mx-auto">
               {searchQuery
-                ? `No items match "${searchQuery}" in Warehouse ${currentWarehouse}. Try a different search term.`
-                : `Add your first stock item to Warehouse ${currentWarehouse} to get started.`}
+                ? `No items match "${searchQuery}" in ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}. Try a different search term.`
+                : `Add your first stock item to ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"} to get started.`}
             </p>
           </div>
         ) : (
@@ -1305,8 +945,8 @@ const exportToPDF = async () => {
                     </span>
                   </div>
                   <div className="flex flex-col gap-1 text-xs sm:text-sm">
-                    <span className="text-green-600 font-medium">Available: {item.stockAvailable} SQFT</span>
-                    <span className="text-blue-600 font-medium">Sold: {item.stockSold} SQFT</span>
+                    <span className="text-green-600 font-medium">Available: ${item.stockAvailable} ${item.unit}</span>
+                    <span className="text-blue-600 font-medium">Sold: ${item.stockSold} ${item.unit}</span>
                   </div>
                 </CardContent>
                 <CardFooter className="p-2 sm:p-3 lg:p-4 pt-0">
@@ -1314,12 +954,12 @@ const exportToPDF = async () => {
                     variant="destructive"
                     size="sm"
                     onClick={(e) => {
-                      e.stopPropagation()
+                      e.stopPropagation();
                       setDeleteConfirmation({
                         isOpen: true,
                         itemId: item.id,
                         itemName: item.name,
-                      })
+                      });
                     }}
                     className="w-full text-xs sm:text-sm h-8 sm:h-9"
                   >
@@ -1335,9 +975,9 @@ const exportToPDF = async () => {
         <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
           <DialogContent className="sm:max-w-md max-w-[95vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl">Add New Stock Item to Warehouse {currentWarehouse}</DialogTitle>
+              <DialogTitle className="text-lg sm:text-xl">Add New Stock Item to ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}</DialogTitle>
               <DialogDescription className="text-sm sm:text-base">
-                Add a new marble or granite item to Warehouse {currentWarehouse} inventory.
+                Add a new marble or granite item to ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"} inventory.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -1400,15 +1040,25 @@ const exportToPDF = async () => {
                 </div>
               </div>
               <div>
-                <Label htmlFor="stock-available" className="text-sm sm:text-base">Stock Available (SQFT) *</Label>
-                <Input
-                  id="stock-available"
-                  type="number"
-                  placeholder="0"
-                  value={newStock.stockAvailable}
-                  onChange={(e) => setNewStock({ ...newStock, stockAvailable: e.target.value })}
-                  className="text-sm sm:text-base"
-                />
+                <Label htmlFor="stock-available" className="text-sm sm:text-base">Stock Available *</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="stock-available"
+                    type="number"
+                    placeholder="0"
+                    value={newStock.stockAvailable}
+                    onChange={(e) => setNewStock({ ...newStock, stockAvailable: e.target.value })}
+                    className="text-sm sm:text-base"
+                  />
+                  <select
+                    value={newStock.unit}
+                    onChange={(e) => setNewStock({ ...newStock, unit: e.target.value as "SQFT" | "Pieces" })}
+                    className="border rounded p-1 text-sm sm:text-base"
+                  >
+                    <option value="SQFT">SQFT</option>
+                    <option value="Pieces">Pieces</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <Label htmlFor="stock-size" className="text-sm sm:text-base">Size/Thickness *</Label>
@@ -1431,7 +1081,7 @@ const exportToPDF = async () => {
                 disabled={!newStock.name || !newStock.stockAvailable || !newStock.size}
                 className="bg-slate-800 hover:bg-slate-700 text-sm sm:text-base"
               >
-                Add Stock Item to Warehouse {currentWarehouse}
+                Add Stock Item to ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1440,9 +1090,9 @@ const exportToPDF = async () => {
         <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
           <DialogContent className="sm:max-w-md max-w-[95vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl">Edit Stock Item in Warehouse {currentWarehouse}</DialogTitle>
+              <DialogTitle className="text-lg sm:text-xl">Edit Stock Item in ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}</DialogTitle>
               <DialogDescription className="text-sm sm:text-base">
-                Update the details of this marble or granite item in Warehouse {currentWarehouse}.
+                Update the details of this marble or granite item in ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -1505,15 +1155,25 @@ const exportToPDF = async () => {
                 </div>
               </div>
               <div>
-                <Label htmlFor="edit-stock-available" className="text-sm sm:text-base">Stock Available (SQFT) *</Label>
-                <Input
-                  id="edit-stock-available"
-                  type="number"
-                  placeholder="0"
-                  value={editStock.stockAvailable}
-                  onChange={(e) => setEditStock({ ...editStock, stockAvailable: e.target.value })}
-                  className="text-sm sm:text-base"
-                />
+                <Label htmlFor="edit-stock-available" className="text-sm sm:text-base">Stock Available *</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="edit-stock-available"
+                    type="number"
+                    placeholder="0"
+                    value={editStock.stockAvailable}
+                    onChange={(e) => setEditStock({ ...editStock, stockAvailable: e.target.value })}
+                    className="text-sm sm:text-base"
+                  />
+                  <select
+                    value={editStock.unit}
+                    onChange={(e) => setEditStock({ ...editStock, unit: e.target.value as "SQFT" | "Pieces" })}
+                    className="border rounded p-1 text-sm sm:text-base"
+                  >
+                    <option value="SQFT">SQFT</option>
+                    <option value="Pieces">Pieces</option>
+                  </select>
+                </div>
               </div>
               <div>
                 <Label htmlFor="edit-stock-size" className="text-sm sm:text-base">Size/Thickness *</Label>
@@ -1550,7 +1210,7 @@ const exportToPDF = async () => {
             <DialogHeader>
               <DialogTitle className="text-lg sm:text-xl">Confirm Delete</DialogTitle>
               <DialogDescription className="text-sm sm:text-base">
-                Are you sure you want to delete {deleteConfirmation.itemName} from Warehouse {currentWarehouse}? This action cannot be undone.
+                Are you sure you want to delete ${deleteConfirmation.itemName} from ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}? This action cannot be undone.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-2 flex-col sm:flex-row">
@@ -1577,7 +1237,7 @@ const exportToPDF = async () => {
             <DialogHeader>
               <DialogTitle className="text-lg sm:text-xl">{detailViewItem?.name}</DialogTitle>
               <DialogDescription className="text-sm sm:text-base">
-                Manage stock details for this item in Warehouse {currentWarehouse}
+                Manage stock details for this item in ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}
               </DialogDescription>
             </DialogHeader>
             {detailViewItem && (
@@ -1596,11 +1256,11 @@ const exportToPDF = async () => {
                   </div>
                   <div>
                     <Label className="text-sm sm:text-base">Available Stock</Label>
-                    <p className="text-lg font-semibold text-green-600">{detailViewItem.stockAvailable} SQFT</p>
+                    <p className="text-lg font-semibold text-green-600">${detailViewItem.stockAvailable} ${detailViewItem.unit}</p>
                   </div>
                   <div>
                     <Label className="text-sm sm:text-base">Sold</Label>
-                    <p className="text-lg font-semibold text-blue-600">{detailViewItem.stockSold} SQFT</p>
+                    <p className="text-lg font-semibold text-blue-600">${detailViewItem.stockSold} ${detailViewItem.unit}</p>
                   </div>
                   <div>
                     <Label className="text-sm sm:text-base">Date Added</Label>
@@ -1609,7 +1269,7 @@ const exportToPDF = async () => {
                 </div>
                 <div className="space-y-4 pt-4 border-t">
                   <div>
-                    <Label htmlFor="sell-quantity" className="text-sm sm:text-base">Sell Stock (SQFT)</Label>
+                    <Label htmlFor="sell-quantity" className="text-sm sm:text-base">Sell Stock (${detailViewItem.unit})</Label>
                     <div className="flex gap-2">
                       <Input
                         id="sell-quantity"
@@ -1633,12 +1293,12 @@ const exportToPDF = async () => {
                     </div>
                     {sellQuantity && Number.parseInt(sellQuantity) > detailViewItem.stockAvailable && (
                       <p className="text-xs text-red-500 mt-1">
-                        Cannot sell more than available stock ({detailViewItem.stockAvailable} SQFT)
+                        Cannot sell more than available stock (${detailViewItem.stockAvailable} ${detailViewItem.unit})
                       </p>
                     )}
                   </div>
                   <div>
-                    <Label htmlFor="add-quantity" className="text-sm sm:text-base">Add Stock (SQFT)</Label>
+                    <Label htmlFor="add-quantity" className="text-sm sm:text-base">Add Stock (${detailViewItem.unit})</Label>
                     <div className="flex gap-2">
                       <Input
                         id="add-quantity"
@@ -1678,5 +1338,5 @@ const exportToPDF = async () => {
         </Dialog>
       </main>
     </div>
-  )
+  );
 }

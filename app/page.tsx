@@ -28,7 +28,7 @@ interface StockItem {
   stockSold: number;
   size: string;
   warehouse: number;
-  unit: "SQFT" | "Pieces"; // Explicitly defined as union type
+  unit: "SQFT" | "Pieces";
 }
 
 interface StockForm {
@@ -36,7 +36,7 @@ interface StockForm {
   image: string;
   stockAvailable: string;
   size: string;
-  unit: "SQFT" | "Pieces"; // Explicitly defined as union type
+  unit: "SQFT" | "Pieces";
 }
 
 interface WarehouseData {
@@ -114,7 +114,7 @@ export default function PaxalMultiWarehouseSystem() {
             const items = snapshot.docs.map((doc) => ({
               ...doc.data() as Omit<StockItem, 'warehouse'>,
               warehouse: parseInt(warehouseNum),
-              unit: (doc.data() as any).unit || "SQFT" // Default to "SQFT" if undefined
+              unit: (doc.data() as any).unit || "SQFT"
             }));
             allWarehouseData[warehouseNum] = items;
           } catch (error) {
@@ -228,7 +228,7 @@ export default function PaxalMultiWarehouseSystem() {
               .report-date { font-size: 14px; color: #64748b; }
               .summary { background-color: #ecfdf5; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #bbf7d0; }
               .summary h3 { margin: 0 0 10px 0; color: #059669; font-size: 16px; }
-              .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+              .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; } /* Responsive grid */
               .summary-item { text-align: center; }
               .summary-value { font-size: 24px; font-weight: bold; color: #059669; }
               .summary-label { font-size: 14px; color: #064e3b; margin-top: 5px; }
@@ -245,6 +245,12 @@ export default function PaxalMultiWarehouseSystem() {
               .no-data { text-align: center; padding: 20px; color: #64748b; font-style: italic; background-color: #f8fafc; }
               .available-badge { background-color: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; display: inline-block; }
               .print-instruction { background-color: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; color: #92400e; }
+              @media (max-width: 600px) {
+                .company-name { font-size: 20px; }
+                .report-title { font-size: 16px; }
+                .summary-value { font-size: 20px; }
+                th, td { font-size: 12px; padding: 10px; }
+              }
             </style>
           </head>
           <body>
@@ -360,7 +366,7 @@ export default function PaxalMultiWarehouseSystem() {
               .report-date { font-size: 14px; color: #64748b; }
               .summary { background-color: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #e2e8f0; }
               .summary h3 { margin: 0 0 10px 0; color: #1e293b; font-size: 16px; }
-              .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+              .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; } /* Responsive grid */
               .summary-item { text-align: center; }
               .summary-value { font-size: 24px; font-weight: bold; color: #1e293b; }
               .summary-label { font-size: 14px; color: #64748b; margin-top: 5px; }
@@ -379,6 +385,12 @@ export default function PaxalMultiWarehouseSystem() {
               .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 15px; }
               .no-data { text-align: center; padding: 20px; color: #64748b; font-style: italic; background-color: #f8fafc; }
               .print-instruction { background-color: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; color: #92400e; }
+              @media (max-width: 600px) {
+                .company-name { font-size: 20px; }
+                .report-title { font-size: 16px; }
+                .summary-value { font-size: 20px; }
+                th, td { font-size: 12px; padding: 10px; }
+              }
             </style>
           </head>
           <body>
@@ -494,7 +506,7 @@ export default function PaxalMultiWarehouseSystem() {
               .report-date { font-size: 14px; color: #64748b; }
               .summary { background-color: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #e2e8f0; }
               .summary h3 { margin: 0 0 10px 0; color: #1e293b; font-size: 16px; }
-              .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+              .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 15px; } /* Responsive grid */
               .summary-item { text-align: center; }
               .summary-value { font-size: 20px; font-weight: bold; color: #1e293b; }
               .summary-label { font-size: 12px; color: #64748b; margin-top: 2px; }
@@ -509,6 +521,12 @@ export default function PaxalMultiWarehouseSystem() {
               .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 15px; }
               .no-data { text-align: center; padding: 40px; color: #64748b; font-style: italic; }
               .print-instruction { background-color: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; color: #92400e; }
+              @media (max-width: 600px) {
+                .company-name { font-size: 20px; }
+                .report-title { font-size: 16px; }
+                .summary-value { font-size: 18px; }
+                th, td { font-size: 12px; padding: 8px; }
+              }
             </style>
           </head>
           <body>
@@ -637,7 +655,7 @@ export default function PaxalMultiWarehouseSystem() {
       image: item.image,
       stockAvailable: item.stockAvailable.toString(),
       size: item.size,
-      unit: item.unit // This is now type-safe due to updated StockForm interface
+      unit: item.unit
     });
     setIsEditModalOpen(true);
     setDetailViewItem(null);
@@ -745,12 +763,12 @@ export default function PaxalMultiWarehouseSystem() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
         <div className="text-center">
           <div className="relative">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-slate-200 rounded-full animate-spin border-t-slate-600 mx-auto mb-4"></div>
-            <div className="absolute inset-0 w-12 h-12 sm:w-16 sm:h-16 border-4 border-transparent rounded-full animate-ping border-t-slate-400 mx-auto mt-2 ml-2"></div>
+            <div className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 border-4 border-slate-200 rounded-full animate-spin border-t-slate-600 mx-auto mb-4"></div>
+            <div className="absolute inset-0 w-8 h-8 sm:w-12 sm:h-12 md:w-16 md:h-16 border-4 border-transparent rounded-full animate-ping border-t-slate-400 mx-auto mt-2 ml-2"></div>
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-800">Paxal Marbles & Granites</h2>
-            <p className="text-sm sm:text-base text-slate-600">Loading your warehouses...</p>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-800">Paxal Marbles & Granites</h2>
+            <p className="text-xs sm:text-sm md:text-base text-slate-600">Loading your warehouses...</p>
             <div className="flex justify-center space-x-1 mt-4">
               <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
               <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
@@ -769,8 +787,8 @@ export default function PaxalMultiWarehouseSystem() {
           <div className="flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
               <div className="text-center sm:text-left">
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Paxal Marbles & Granites</h1>
-                <p className="text-sm sm:text-base text-slate-600 mt-1">Multi-Warehouse Stock Management</p>
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900">Paxal Marbles & Granites</h1>
+                <p className="text-xs sm:text-sm md:text-base text-slate-600 mt-1">Multi-Warehouse Stock Management</p>
               </div>
               <div className="flex items-center justify-center sm:justify-end gap-2">
                 <Badge variant="secondary" className="text-xs sm:text-sm">
@@ -789,15 +807,15 @@ export default function PaxalMultiWarehouseSystem() {
                   onClick={() => handleWarehouseChange(warehouseNum)}
                   variant={currentWarehouse === warehouseNum ? "default" : "outline"}
                   size="sm"
-                  className={`h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm ${
+                  className={`h-7 sm:h-8 px-2 sm:px-3 text-xs sm:text-sm flex items-center whitespace-nowrap ${
                     currentWarehouse === warehouseNum 
                       ? "bg-slate-800 hover:bg-slate-700" 
                       : "hover:bg-slate-100"
                   }`}
                 >
-                  <Building2 className="h-3 w-3 mr-1" />
-                  <span className="hidden sm:inline">Warehouse</span>
-                  <span className="sm:hidden">WH</span> ${warehouseNum === 1 ? "W(1) - PMG(Rajankunte)" : warehouseNum === 2 ? "W(2) - PMG(Jakkur)" : warehouseNum === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}
+                  <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  <span className="hidden md:inline">Warehouse</span>
+                  <span className="md:hidden">WH</span> {warehouseNum}
                   <Badge 
                     variant="secondary" 
                     className="ml-1 sm:ml-2 text-xs bg-slate-100 text-slate-700 px-1"
@@ -814,8 +832,8 @@ export default function PaxalMultiWarehouseSystem() {
       <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
         <div className="mb-4 p-4 bg-white rounded-lg border border-slate-200">
           <div className="flex items-center justify-center gap-2 text-slate-700">
-            <Building2 className="h-5 w-5" />
-            <span className="text-lg font-semibold">Currently Managing: ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}</span>
+            <Building2 className="h-4 w-4 sm:h-5 sm:w-5" />
+            <span className="text-base sm:text-lg font-semibold">Currently Managing: {currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}</span>
           </div>
         </div>
 
@@ -827,44 +845,41 @@ export default function PaxalMultiWarehouseSystem() {
               placeholder={`Search stock items in ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 sm:pl-10 h-10 sm:h-12 text-sm sm:text-base lg:text-lg"
+              className="pl-8 sm:pl-10 h-9 sm:h-10 text-xs sm:text-sm md:text-base"
             />
           </div>
           <div className="flex flex-col gap-2">
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-
-
-              
               <Button
                 onClick={exportToPDF}
                 disabled={isExportingPDF}
-                className="h-10 sm:h-12 px-4 sm:px-6 bg-green-600 hover:bg-green-700 text-sm sm:text-base flex-1 sm:flex-none"
+                className="h-9 sm:h-10 px-3 sm:px-4 bg-green-600 hover:bg-green-700 text-xs sm:text-sm flex-1 sm:flex-none"
               >
                 {isExportingPDF ? (
                   <>
-                    <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     Exporting...
                   </>
                 ) : (
                   <>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"} to PDF
+                    <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    Export {currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"} to PDF
                   </>
                 )}
               </Button>
               <Button
                 onClick={() => setIsAddModalOpen(true)}
-                className="h-10 sm:h-12 px-4 sm:px-6 bg-slate-800 hover:bg-slate-700 text-sm sm:text-base flex-1 sm:flex-none"
+                className="h-9 sm:h-10 px-3 sm:px-4 bg-slate-800 hover:bg-slate-700 text-xs sm:text-sm flex-1 sm:flex-none"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Add New Stock to ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}
+                <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                Add New Stock
               </Button>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <Button
                 onClick={exportAvailableStockToPDF}
                 disabled={isExportingAvailableStock}
-                className="h-8 sm:h-10 px-3 sm:px-4 bg-emerald-500 hover:bg-emerald-600 text-xs sm:text-sm flex-1 sm:flex-none border border-emerald-300"
+                className="h-8 sm:h-9 px-3 sm:px-4 bg-emerald-500 hover:bg-emerald-600 text-xs sm:text-sm flex-1 sm:flex-none border border-emerald-300"
               >
                 {isExportingAvailableStock ? (
                   <>
@@ -874,14 +889,14 @@ export default function PaxalMultiWarehouseSystem() {
                 ) : (
                   <>
                     <span className="mr-1 sm:mr-2">📦</span>
-                    Available Stock Only (All Warehouses)
+                    Available Stock (All Warehouses)
                   </>
                 )}
               </Button>
               <Button
                 onClick={exportSystemStockToPDF}
                 disabled={isExportingSystemPDF}
-                className="h-8 sm:h-10 px-3 sm:px-4 bg-slate-600 hover:bg-slate-700 text-xs sm:text-sm flex-1 sm:flex-none border border-slate-400"
+                className="h-8 sm:h-9 px-3 sm:px-4 bg-slate-600 hover:bg-slate-700 text-xs sm:text-sm flex-1 sm:flex-none border border-slate-400"
               >
                 {isExportingSystemPDF ? (
                   <>
@@ -891,7 +906,7 @@ export default function PaxalMultiWarehouseSystem() {
                 ) : (
                   <>
                     <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                    Complete System Report (All Warehouses)
+                    System Report (All Warehouses)
                   </>
                 )}
               </Button>
@@ -902,19 +917,19 @@ export default function PaxalMultiWarehouseSystem() {
         {filteredItems.length === 0 ? (
           <div className="text-center py-8 sm:py-12 px-4">
             <div className="text-slate-400 mb-4">
-              <Search className="h-8 w-8 sm:h-12 sm:w-12 mx-auto" />
+              <Search className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 mx-auto" />
             </div>
-            <h3 className="text-base sm:text-lg font-medium text-slate-900 mb-2">
+            <h3 className="text-base sm:text-lg md:text-xl font-medium text-slate-900 mb-2">
               {searchQuery ? "No items found" : `No stock items in ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"} yet`}
             </h3>
-            <p className="text-sm sm:text-base text-slate-600 max-w-md mx-auto">
+            <p className="text-xs sm:text-sm md:text-base text-slate-600 max-w-md mx-auto">
               {searchQuery
                 ? `No items match "${searchQuery}" in ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}. Try a different search term.`
                 : `Add your first stock item to ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"} to get started.`}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
             {filteredItems.map((item) => (
               <Card
                 key={item.id}
@@ -930,8 +945,8 @@ export default function PaxalMultiWarehouseSystem() {
                     />
                   </div>
                 </CardHeader>
-                <CardContent className="p-2 sm:p-3 lg:p-4">
-                  <CardTitle className="text-sm sm:text-base lg:text-lg font-semibold text-slate-900 mb-2 line-clamp-2">
+                <CardContent className="p-2 sm:p-3">
+                  <CardTitle className="text-sm sm:text-base font-semibold text-slate-900 mb-2 line-clamp-2">
                     {item.name}
                   </CardTitle>
                   <div className="flex flex-col gap-1 mb-2">
@@ -945,11 +960,11 @@ export default function PaxalMultiWarehouseSystem() {
                     </span>
                   </div>
                   <div className="flex flex-col gap-1 text-xs sm:text-sm">
-                    <span className="text-green-600 font-medium">Available: ${item.stockAvailable} ${item.unit}</span>
-                    <span className="text-blue-600 font-medium">Sold: ${item.stockSold} ${item.unit}</span>
+                    <span className="text-green-600 font-medium">Available: {item.stockAvailable} {item.unit}</span>
+                    <span className="text-blue-600 font-medium">Sold: {item.stockSold} {item.unit}</span>
                   </div>
                 </CardContent>
-                <CardFooter className="p-2 sm:p-3 lg:p-4 pt-0">
+                <CardFooter className="p-2 sm:p-3 pt-0">
                   <Button
                     variant="destructive"
                     size="sm"
@@ -973,26 +988,26 @@ export default function PaxalMultiWarehouseSystem() {
         )}
 
         <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-          <DialogContent className="sm:max-w-md max-w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl">Add New Stock Item to ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}</DialogTitle>
-              <DialogDescription className="text-sm sm:text-base">
-                Add a new marble or granite item to ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"} inventory.
+              <DialogTitle className="text-base sm:text-lg md:text-xl">Add New Stock Item to {currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm md:text-base">
+                Add a new marble or granite item to {currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"} inventory.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="stock-name" className="text-sm sm:text-base">Stock Name *</Label>
+                <Label htmlFor="stock-name" className="text-xs sm:text-sm md:text-base">Stock Name *</Label>
                 <Input
                   id="stock-name"
                   placeholder="e.g., Carrara White Marble"
                   value={newStock.name}
                   onChange={(e) => setNewStock({ ...newStock, name: e.target.value })}
-                  className="text-sm sm:text-base"
+                  className="text-xs sm:text-sm md:text-base"
                 />
               </div>
               <div>
-                <Label htmlFor="stock-image" className="text-sm sm:text-base">Image (Optional)</Label>
+                <Label htmlFor="stock-image" className="text-xs sm:text-sm md:text-base">Image (Optional)</Label>
                 <div className="space-y-3">
                   <div className="flex gap-2">
                     <Input
@@ -1000,16 +1015,16 @@ export default function PaxalMultiWarehouseSystem() {
                       placeholder="https://example.com/image.jpg"
                       value={newStock.image.startsWith("data:") ? "" : newStock.image}
                       onChange={(e) => setNewStock({ ...newStock, image: e.target.value })}
-                      className="text-sm sm:text-base"
+                      className="text-xs sm:text-sm md:text-base"
                     />
                     <Button
                       variant="outline"
                       size="icon"
                       type="button"
                       onClick={() => document.getElementById("file-upload")?.click()}
-                      className="shrink-0"
+                      className="shrink-0 h-9 w-9 sm:h-10 sm:w-10"
                     >
-                      <Upload className="h-4 w-4" />
+                      <Upload className="h-3 w-3 sm:h-4 sm:w-4" />
                     </Button>
                   </div>
                   <input
@@ -1030,7 +1045,7 @@ export default function PaxalMultiWarehouseSystem() {
                         variant="outline"
                         size="sm"
                         onClick={() => setNewStock({ ...newStock, image: "" })}
-                        className="mt-1 text-xs"
+                        className="mt-1 text-xs sm:text-sm"
                       >
                         Remove Image
                       </Button>
@@ -1040,7 +1055,7 @@ export default function PaxalMultiWarehouseSystem() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="stock-available" className="text-sm sm:text-base">Stock Available *</Label>
+                <Label htmlFor="stock-available" className="text-xs sm:text-sm md:text-base">Stock Available *</Label>
                 <div className="flex gap-2">
                   <Input
                     id="stock-available"
@@ -1048,12 +1063,12 @@ export default function PaxalMultiWarehouseSystem() {
                     placeholder="0"
                     value={newStock.stockAvailable}
                     onChange={(e) => setNewStock({ ...newStock, stockAvailable: e.target.value })}
-                    className="text-sm sm:text-base"
+                    className="text-xs sm:text-sm md:text-base"
                   />
                   <select
                     value={newStock.unit}
                     onChange={(e) => setNewStock({ ...newStock, unit: e.target.value as "SQFT" | "Pieces" })}
-                    className="border rounded p-1 text-sm sm:text-base"
+                    className="border rounded p-1 text-xs sm:text-sm md:text-base"
                   >
                     <option value="SQFT">SQFT</option>
                     <option value="Pieces">Pieces</option>
@@ -1061,53 +1076,53 @@ export default function PaxalMultiWarehouseSystem() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="stock-size" className="text-sm sm:text-base">Size/Thickness *</Label>
+                <Label htmlFor="stock-size" className="text-xs sm:text-sm md:text-base">Size/Thickness *</Label>
                 <Input
                   id="stock-size"
                   placeholder="e.g., 2/3, 3/4, 1/2"
                   value={newStock.size}
                   onChange={(e) => setNewStock({ ...newStock, size: e.target.value })}
-                  className="text-sm sm:text-base"
+                  className="text-xs sm:text-sm md:text-base"
                 />
                 <p className="text-xs text-slate-500 mt-1">Enter the thickness or size specification (e.g., 2/3", 3/4")</p>
               </div>
             </div>
             <DialogFooter className="gap-2 flex-col sm:flex-row">
-              <Button variant="outline" onClick={() => setIsAddModalOpen(false)} className="text-sm sm:text-base">
+              <Button variant="outline" onClick={() => setIsAddModalOpen(false)} className="text-xs sm:text-sm md:text-base">
                 Cancel
               </Button>
               <Button
                 onClick={handleAddStock}
                 disabled={!newStock.name || !newStock.stockAvailable || !newStock.size}
-                className="bg-slate-800 hover:bg-slate-700 text-sm sm:text-base"
+                className="bg-slate-800 hover:bg-slate-700 text-xs sm:text-sm md:text-base"
               >
-                Add Stock Item to ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}
+                Add Stock Item
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
         <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-          <DialogContent className="sm:max-w-md max-w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl">Edit Stock Item in ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}</DialogTitle>
-              <DialogDescription className="text-sm sm:text-base">
-                Update the details of this marble or granite item in ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}.
+              <DialogTitle className="text-base sm:text-lg md:text-xl">Edit Stock Item in {currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm md:text-base">
+                Update the details of this marble or granite item in {currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="edit-stock-name" className="text-sm sm:text-base">Stock Name *</Label>
+                <Label htmlFor="edit-stock-name" className="text-xs sm:text-sm md:text-base">Stock Name *</Label>
                 <Input
                   id="edit-stock-name"
                   placeholder="e.g., Carrara White Marble"
                   value={editStock.name}
                   onChange={(e) => setEditStock({ ...editStock, name: e.target.value })}
-                  className="text-sm sm:text-base"
+                  className="text-xs sm:text-sm md:text-base"
                 />
               </div>
               <div>
-                <Label htmlFor="edit-stock-image" className="text-sm sm:text-base">Image (Optional)</Label>
+                <Label htmlFor="edit-stock-image" className="text-xs sm:text-sm md:text-base">Image (Optional)</Label>
                 <div className="space-y-3">
                   <div className="flex gap-2">
                     <Input
@@ -1115,16 +1130,16 @@ export default function PaxalMultiWarehouseSystem() {
                       placeholder="https://example.com/image.jpg"
                       value={editStock.image.startsWith("data:") ? "" : editStock.image}
                       onChange={(e) => setEditStock({ ...editStock, image: e.target.value })}
-                      className="text-sm sm:text-base"
+                      className="text-xs sm:text-sm md:text-base"
                     />
                     <Button
                       variant="outline"
                       size="icon"
                       type="button"
                       onClick={() => document.getElementById("edit-file-upload")?.click()}
-                      className="shrink-0"
+                      className="shrink-0 h-9 w-9 sm:h-10 sm:w-10"
                     >
-                      <Upload className="h-4 w-4" />
+                      <Upload className="h-3 w-3 sm:h-4 sm:w-4" />
                     </Button>
                   </div>
                   <input
@@ -1145,7 +1160,7 @@ export default function PaxalMultiWarehouseSystem() {
                         variant="outline"
                         size="sm"
                         onClick={() => setEditStock({ ...editStock, image: "" })}
-                        className="mt-1 text-xs"
+                        className="mt-1 text-xs sm:text-sm"
                       >
                         Remove Image
                       </Button>
@@ -1155,7 +1170,7 @@ export default function PaxalMultiWarehouseSystem() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="edit-stock-available" className="text-sm sm:text-base">Stock Available *</Label>
+                <Label htmlFor="edit-stock-available" className="text-xs sm:text-sm md:text-base">Stock Available *</Label>
                 <div className="flex gap-2">
                   <Input
                     id="edit-stock-available"
@@ -1163,12 +1178,12 @@ export default function PaxalMultiWarehouseSystem() {
                     placeholder="0"
                     value={editStock.stockAvailable}
                     onChange={(e) => setEditStock({ ...editStock, stockAvailable: e.target.value })}
-                    className="text-sm sm:text-base"
+                    className="text-xs sm:text-sm md:text-base"
                   />
                   <select
                     value={editStock.unit}
                     onChange={(e) => setEditStock({ ...editStock, unit: e.target.value as "SQFT" | "Pieces" })}
-                    className="border rounded p-1 text-sm sm:text-base"
+                    className="border rounded p-1 text-xs sm:text-sm md:text-base"
                   >
                     <option value="SQFT">SQFT</option>
                     <option value="Pieces">Pieces</option>
@@ -1176,25 +1191,25 @@ export default function PaxalMultiWarehouseSystem() {
                 </div>
               </div>
               <div>
-                <Label htmlFor="edit-stock-size" className="text-sm sm:text-base">Size/Thickness *</Label>
+                <Label htmlFor="edit-stock-size" className="text-xs sm:text-sm md:text-base">Size/Thickness *</Label>
                 <Input
                   id="edit-stock-size"
                   placeholder="e.g., 2/3, 3/4, 1/2"
                   value={editStock.size}
                   onChange={(e) => setEditStock({ ...editStock, size: e.target.value })}
-                  className="text-sm sm:text-base"
+                  className="text-xs sm:text-sm md:text-base"
                 />
                 <p className="text-xs text-slate-500 mt-1">Enter the thickness or size specification (e.g., 2/3", 3/4")</p>
               </div>
             </div>
             <DialogFooter className="gap-2 flex-col sm:flex-row">
-              <Button variant="outline" onClick={() => setIsEditModalOpen(false)} className="text-sm sm:text-base">
+              <Button variant="outline" onClick={() => setIsEditModalOpen(false)} className="text-xs sm:text-sm md:text-base">
                 Cancel
               </Button>
               <Button
                 onClick={handleUpdateStock}
                 disabled={!editStock.name || !editStock.stockAvailable || !editStock.size}
-                className="bg-slate-800 hover:bg-slate-700 text-sm sm:text-base"
+                className="bg-slate-800 hover:bg-slate-700 text-xs sm:text-sm md:text-base"
               >
                 Update Stock Item
               </Button>
@@ -1206,25 +1221,25 @@ export default function PaxalMultiWarehouseSystem() {
           open={deleteConfirmation.isOpen}
           onOpenChange={(open) => setDeleteConfirmation({ ...deleteConfirmation, isOpen: open })}
         >
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="max-w-[95vw] sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl">Confirm Delete</DialogTitle>
-              <DialogDescription className="text-sm sm:text-base">
-                Are you sure you want to delete ${deleteConfirmation.itemName} from ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}? This action cannot be undone.
+              <DialogTitle className="text-base sm:text-lg md:text-xl">Confirm Delete</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm md:text-base">
+                Are you sure you want to delete {deleteConfirmation.itemName} from {currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}? This action cannot be undone.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-2 flex-col sm:flex-row">
               <Button
                 variant="outline"
                 onClick={() => setDeleteConfirmation({ isOpen: false, itemId: "", itemName: "" })}
-                className="text-sm sm:text-base"
+                className="text-xs sm:text-sm md:text-base"
               >
                 Cancel
               </Button>
               <Button
                 variant="destructive"
                 onClick={() => handleDeleteStock(deleteConfirmation.itemId)}
-                className="text-sm sm:text-base"
+                className="text-xs sm:text-sm md:text-base"
               >
                 Delete
               </Button>
@@ -1233,11 +1248,11 @@ export default function PaxalMultiWarehouseSystem() {
         </Dialog>
 
         <Dialog open={!!detailViewItem} onOpenChange={(open) => !open && setDetailViewItem(null)}>
-          <DialogContent className="sm:max-w-lg max-w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-lg sm:text-xl">{detailViewItem?.name}</DialogTitle>
-              <DialogDescription className="text-sm sm:text-base">
-                Manage stock details for this item in ${currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}
+              <DialogTitle className="text-base sm:text-lg md:text-xl">{detailViewItem?.name}</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm md:text-base">
+                Manage stock details for this item in {currentWarehouse === 1 ? "W(1) - PMG(Rajankunte)" : currentWarehouse === 2 ? "W(2) - PMG(Jakkur)" : currentWarehouse === 3 ? "W(3) - Paxal Tiles and Bathware" : "W(4) - Paxal Decor"}
               </DialogDescription>
             </DialogHeader>
             {detailViewItem && (
@@ -1251,25 +1266,25 @@ export default function PaxalMultiWarehouseSystem() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm sm:text-base">Size</Label>
-                    <p className="text-lg font-semibold">{detailViewItem.size}"</p>
+                    <Label className="text-xs sm:text-sm md:text-base">Size</Label>
+                    <p className="text-base sm:text-lg font-semibold">{detailViewItem.size}"</p>
                   </div>
                   <div>
-                    <Label className="text-sm sm:text-base">Available Stock</Label>
-                    <p className="text-lg font-semibold text-green-600">${detailViewItem.stockAvailable} ${detailViewItem.unit}</p>
+                    <Label className="text-xs sm:text-sm md:text-base">Available Stock</Label>
+                    <p className="text-base sm:text-lg font-semibold text-green-600">{detailViewItem.stockAvailable} {detailViewItem.unit}</p>
                   </div>
                   <div>
-                    <Label className="text-sm sm:text-base">Sold</Label>
-                    <p className="text-lg font-semibold text-blue-600">${detailViewItem.stockSold} ${detailViewItem.unit}</p>
+                    <Label className="text-xs sm:text-sm md:text-base">Sold</Label>
+                    <p className="text-base sm:text-lg font-semibold text-blue-600">{detailViewItem.stockSold} {detailViewItem.unit}</p>
                   </div>
                   <div>
-                    <Label className="text-sm sm:text-base">Date Added</Label>
-                    <p className="text-lg font-semibold">{new Date(detailViewItem.dateAdded).toLocaleDateString()}</p>
+                    <Label className="text-xs sm:text-sm md:text-base">Date Added</Label>
+                    <p className="text-base sm:text-lg font-semibold">{new Date(detailViewItem.dateAdded).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className="space-y-4 pt-4 border-t">
                   <div>
-                    <Label htmlFor="sell-quantity" className="text-sm sm:text-base">Sell Stock (${detailViewItem.unit})</Label>
+                    <Label htmlFor="sell-quantity" className="text-xs sm:text-sm md:text-base">Sell Stock ({detailViewItem.unit})</Label>
                     <div className="flex gap-2">
                       <Input
                         id="sell-quantity"
@@ -1277,7 +1292,7 @@ export default function PaxalMultiWarehouseSystem() {
                         placeholder="Enter quantity to sell"
                         value={sellQuantity}
                         onChange={(e) => setSellQuantity(e.target.value)}
-                        className="text-sm sm:text-base"
+                        className="text-xs sm:text-sm md:text-base"
                       />
                       <Button
                         onClick={handleSellStock}
@@ -1286,19 +1301,19 @@ export default function PaxalMultiWarehouseSystem() {
                           Number.parseInt(sellQuantity) <= 0 ||
                           Number.parseInt(sellQuantity) > detailViewItem.stockAvailable
                         }
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="bg-blue-600 hover:bg-blue-700 text-xs sm:text-sm md:text-base"
                       >
                         Sell
                       </Button>
                     </div>
                     {sellQuantity && Number.parseInt(sellQuantity) > detailViewItem.stockAvailable && (
                       <p className="text-xs text-red-500 mt-1">
-                        Cannot sell more than available stock (${detailViewItem.stockAvailable} ${detailViewItem.unit})
+                        Cannot sell more than available stock ({detailViewItem.stockAvailable} {detailViewItem.unit})
                       </p>
                     )}
                   </div>
                   <div>
-                    <Label htmlFor="add-quantity" className="text-sm sm:text-base">Add Stock (${detailViewItem.unit})</Label>
+                    <Label htmlFor="add-quantity" className="text-xs sm:text-sm md:text-base">Add Stock ({detailViewItem.unit})</Label>
                     <div className="flex gap-2">
                       <Input
                         id="add-quantity"
@@ -1306,12 +1321,12 @@ export default function PaxalMultiWarehouseSystem() {
                         placeholder="Enter quantity to add"
                         value={addQuantity}
                         onChange={(e) => setAddQuantity(e.target.value)}
-                        className="text-sm sm:text-base"
+                        className="text-xs sm:text-sm md:text-base"
                       />
                       <Button
                         onClick={handleAddStockToExisting}
                         disabled={!addQuantity || Number.parseInt(addQuantity) <= 0}
-                        className="bg-green-600 hover:bg-green-700"
+                        className="bg-green-600 hover:bg-green-700 text-xs sm:text-sm md:text-base"
                       >
                         Add
                       </Button>
@@ -1321,16 +1336,16 @@ export default function PaxalMultiWarehouseSystem() {
                 <div className="pt-4 border-t">
                   <Button
                     onClick={() => handleOpenEditModal(detailViewItem)}
-                    className="w-full bg-slate-800 hover:bg-slate-700"
+                    className="w-full bg-slate-800 hover:bg-slate-700 text-xs sm:text-sm md:text-base"
                   >
-                    <Edit className="h-4 w-4 mr-2" />
+                    <Edit className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                     Edit Item Details
                   </Button>
                 </div>
               </div>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDetailViewItem(null)} className="text-sm sm:text-base">
+              <Button variant="outline" onClick={() => setDetailViewItem(null)} className="text-xs sm:text-sm md:text-base">
                 Close
               </Button>
             </DialogFooter>
